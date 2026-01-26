@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="Definitions_Servicing_Final" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0">
+  <bpmn:collaboration id="Collaboration_Servicing">
+    <bpmn:participant id="Participant_Servicing" name="Servicing Setup &amp; Handoff (L2)" processRef="Process_Servicing_Final" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Servicing_Final" name="Servicing Setup" isExecutable="true">
+    
+    <bpmn:laneSet id="LaneSet_Servicing">
+      <bpmn:lane id="Lane_Moxi_Ops" name="Moxi Operations (Internal)">
+        <bpmn:flowNodeRef>Start_Funded</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sys_TransferData</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sys_SendWelcome</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_SubServicer" name="Sub-Servicer (Statebridge)">
+        <bpmn:flowNodeRef>Gateway_Split_Functions</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sys_SetupPayments</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sys_EscrowAnalysis</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sys_InvestorReporting</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Join_Functions</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ActiveServicing</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_Funded" name="Loan Funded &amp; Recorded">
+      <bpmn:outgoing>Flow_Start_Transfer</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_Sys_TransferData" name="Board to Core System">
+      <bpmn:documentation>Transfer data tape to sub-servicer.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="transfer-servicing-data" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start_Transfer</bpmn:incoming>
+      <bpmn:outgoing>Flow_Transfer_Welcome</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Sys_SendWelcome" name="Send Welcome Letter">
+      <bpmn:documentation>Compliance requirement (Goodbye/Hello letter).</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send-welcome-letter" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Transfer_Welcome</bpmn:incoming>
+      <bpmn:outgoing>Flow_Welcome_Split</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:parallelGateway id="Gateway_Split_Functions" name="Initiate Core Functions">
+      <bpmn:incoming>Flow_Welcome_Split</bpmn:incoming>
+      <bpmn:outgoing>Flow_Split_Pay</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Split_Escrow</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Split_Investor</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <bpmn:serviceTask id="Task_Sys_SetupPayments" name="Payment Processing Setup">
+      <bpmn:documentation>Activate ACH and borrower portal.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="setup-payment-processing" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Split_Pay</bpmn:incoming>
+      <bpmn:outgoing>Flow_Pay_Join</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Sys_EscrowAnalysis" name="Initial Escrow Analysis">
+      <bpmn:documentation>Setup tax and insurance buckets.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="perform-escrow-analysis" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Split_Escrow</bpmn:incoming>
+      <bpmn:outgoing>Flow_Escrow_Join</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Sys_InvestorReporting" name="Investor Reporting Setup">
+      <bpmn:documentation>Configure reporting schedule for investor.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="setup-investor-reporting" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Split_Investor</bpmn:incoming>
+      <bpmn:outgoing>Flow_Investor_Join</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:parallelGateway id="Gateway_Join_Functions" name="Setup Complete">
+      <bpmn:incoming>Flow_Pay_Join</bpmn:incoming>
+      <bpmn:incoming>Flow_Escrow_Join</bpmn:incoming>
+      <bpmn:incoming>Flow_Investor_Join</bpmn:incoming>
+      <bpmn:outgoing>Flow_Join_End</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <bpmn:endEvent id="End_ActiveServicing" name="Ongoing Servicing">
+      <bpmn:incoming>Flow_Join_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Start_Transfer" sourceRef="Start_Funded" targetRef="Task_Sys_TransferData" />
+    <bpmn:sequenceFlow id="Flow_Transfer_Welcome" sourceRef="Task_Sys_TransferData" targetRef="Task_Sys_SendWelcome" />
+    <bpmn:sequenceFlow id="Flow_Welcome_Split" sourceRef="Task_Sys_SendWelcome" targetRef="Gateway_Split_Functions" />
+    
+    <bpmn:sequenceFlow id="Flow_Split_Pay" sourceRef="Gateway_Split_Functions" targetRef="Task_Sys_SetupPayments" />
+    <bpmn:sequenceFlow id="Flow_Pay_Join" sourceRef="Task_Sys_SetupPayments" targetRef="Gateway_Join_Functions" />
+    
+    <bpmn:sequenceFlow id="Flow_Split_Escrow" sourceRef="Gateway_Split_Functions" targetRef="Task_Sys_EscrowAnalysis" />
+    <bpmn:sequenceFlow id="Flow_Escrow_Join" sourceRef="Task_Sys_EscrowAnalysis" targetRef="Gateway_Join_Functions" />
+    
+    <bpmn:sequenceFlow id="Flow_Split_Investor" sourceRef="Gateway_Split_Functions" targetRef="Task_Sys_InvestorReporting" />
+    <bpmn:sequenceFlow id="Flow_Investor_Join" sourceRef="Task_Sys_InvestorReporting" targetRef="Gateway_Join_Functions" />
+    
+    <bpmn:sequenceFlow id="Flow_Join_End" sourceRef="Gateway_Join_Functions" targetRef="End_ActiveServicing" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Servicing_Final">
+    <bpmndi:BPMNPlane id="BPMNPlane_Servicing_Final" bpmnElement="Collaboration_Servicing">
+      <bpmndi:BPMNShape id="Part_di" bpmnElement="Participant_Servicing" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1000" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Moxi_di" bpmnElement="Lane_Moxi_Ops" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="80" width="970" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sub_di" bpmnElement="Lane_SubServicer" isHorizontal="true" bioc:stroke="#1e88e5" bioc:fill="#bbdefb">
+        <dc:Bounds x="190" y="280" width="970" height="300" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_Funded">
+        <dc:Bounds x="232" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Trans_di" bpmnElement="Task_Sys_TransferData">
+        <dc:Bounds x="320" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Wel_di" bpmnElement="Task_Sys_SendWelcome">
+        <dc:Bounds x="480" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Split_di" bpmnElement="Gateway_Split_Functions">
+        <dc:Bounds x="505" y="320" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pay_di" bpmnElement="Task_Sys_SetupPayments">
+        <dc:Bounds x="650" y="305" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Esc_di" bpmnElement="Task_Sys_EscrowAnalysis">
+        <dc:Bounds x="650" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Inv_di" bpmnElement="Task_Sys_InvestorReporting">
+        <dc:Bounds x="650" y="490" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Join_di" bpmnElement="Gateway_Join_Functions">
+        <dc:Bounds x="850" y="415" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End_ActiveServicing">
+        <dc:Bounds x="950" y="422" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Edge_1" bpmnElement="Flow_Start_Transfer">
+        <di:waypoint x="268" y="180" />
+        <di:waypoint x="320" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_2" bpmnElement="Flow_Transfer_Welcome">
+        <di:waypoint x="420" y="180" />
+        <di:waypoint x="480" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_3" bpmnElement="Flow_Welcome_Split">
+        <di:waypoint x="530" y="220" />
+        <di:waypoint x="530" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_4" bpmnElement="Flow_Split_Pay">
+        <di:waypoint x="555" y="345" />
+        <di:waypoint x="650" y="345" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_5" bpmnElement="Flow_Pay_Join">
+        <di:waypoint x="750" y="345" />
+        <di:waypoint x="875" y="345" />
+        <di:waypoint x="875" y="415" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_6" bpmnElement="Flow_Split_Escrow">
+        <di:waypoint x="530" y="370" />
+        <di:waypoint x="530" y="440" />
+        <di:waypoint x="650" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_7" bpmnElement="Flow_Escrow_Join">
+        <di:waypoint x="750" y="440" />
+        <di:waypoint x="850" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_8" bpmnElement="Flow_Split_Investor">
+        <di:waypoint x="530" y="370" />
+        <di:waypoint x="530" y="530" />
+        <di:waypoint x="650" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_9" bpmnElement="Flow_Investor_Join">
+        <di:waypoint x="750" y="530" />
+        <di:waypoint x="875" y="530" />
+        <di:waypoint x="875" y="465" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_10" bpmnElement="Flow_Join_End">
+        <di:waypoint x="900" y="440" />
+        <di:waypoint x="950" y="440" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_CoBorrowerInvite" targetNamespace="https://confersolutions.ai/bpmn/l2/application" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_CoBorrowerInvite">
+    <bpmn:participant id="Participant_CoBorrowerInvite" name="Co-Borrower Invitation Flow (WF-04)" processRef="Process_CoBorrowerInvite" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_CoBorrowerInvite" name="L2 - Co-Borrower Invitation" isExecutable="false">
+    <bpmn:documentation>
+L2 DETAILED PROCESS: CO-BORROWER INVITATION (WF-04)
+
+PURPOSE: Allow primary borrower to invite a co-borrower to complete their section of the application.
+
+TRIGGER: Primary borrower selects "Yes" to co-borrower question at Step 2 or later.
+
+ACTORS:
+- Primary Borrower: Person initiating the invitation
+- System: Automated platform actions
+- Co-Borrower: Receives email (acts in WF-05)
+
+END STATE: Co-borrower invited, linked to application, primary continues.
+
+ESTIMATED TIME: 2-3 minutes
+
+SOURCE: docs/specs/borrower-portal-workflows.md (WF-04)
+    </bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_CoBorrowerInvite">
+      <bpmn:lane id="Lane_PrimaryBorrower" name="Primary Borrower">
+        <bpmn:flowNodeRef>Start_InWizard</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ApplyWithCoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HowToAdd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterCoBorrowerInfo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterCoBorrowerEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterCoBorrowerName</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectCoBorrowerRole</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ClickSendInvitation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ContinueWizard</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="System">
+        <bpmn:flowNodeRef>Task_DisplayCoBorrowerQuestion</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ExpandCoBorrowerSection</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DisplayCoBorrowerOptions</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DisplayEmailInput</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ValidateEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_EmailValid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ShowEmailError</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateInviteRecord</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendInvitationEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DisplayConfirmation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AllowPrimaryContinue</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="Start_InWizard" name="Primary at Step 2+">
+      <bpmn:documentation>Primary borrower is in the application wizard at Step 2 (Borrower Info) or later.</bpmn:documentation>
+      <bpmn:outgoing>Flow_01</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- System displays co-borrower question -->
+    <bpmn:serviceTask id="Task_DisplayCoBorrowerQuestion" name="Display Co-Borrower Question">
+      <bpmn:documentation>System displays: "Are you applying with a co-borrower?" with Yes/No selection.</bpmn:documentation>
+      <bpmn:incoming>Flow_01</bpmn:incoming>
+      <bpmn:outgoing>Flow_02</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Decision: Apply with co-borrower? -->
+    <bpmn:exclusiveGateway id="Gateway_ApplyWithCoBorrower" name="Apply with Co-Borrower?">
+      <bpmn:documentation>
+DECISION POINT: Does the primary borrower want to apply with a co-borrower?
+
+YES: Expand co-borrower section, show options
+NO: Skip co-borrower section, continue with wizard
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_02</bpmn:incoming>
+      <bpmn:outgoing>Flow_CoBorrowerYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CoBorrowerNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- No co-borrower path -->
+    <bpmn:endEvent id="End_ContinueWizard" name="Continue Wizard Solo">
+      <bpmn:documentation>Primary borrower continues the application wizard without a co-borrower.</bpmn:documentation>
+      <bpmn:incoming>Flow_CoBorrowerNo</bpmn:incoming>
+      <bpmn:incoming>Flow_AfterPrimaryEntersInfo</bpmn:incoming>
+      <bpmn:incoming>Flow_AllowContinue</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Expand co-borrower section -->
+    <bpmn:serviceTask id="Task_ExpandCoBorrowerSection" name="Expand Co-Borrower Section">
+      <bpmn:documentation>System expands the co-borrower section to show options for adding a co-borrower.</bpmn:documentation>
+      <bpmn:incoming>Flow_CoBorrowerYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_03</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Display co-borrower options -->
+    <bpmn:serviceTask id="Task_DisplayCoBorrowerOptions" name="Display Add Options">
+      <bpmn:documentation>System displays two options:
+1. "Enter their info myself" - Primary fills co-borrower data
+2. "Invite them to enter their own info" - Send invitation email</bpmn:documentation>
+      <bpmn:incoming>Flow_03</bpmn:incoming>
+      <bpmn:outgoing>Flow_04</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Decision: How to add co-borrower? -->
+    <bpmn:exclusiveGateway id="Gateway_HowToAdd" name="How to Add?">
+      <bpmn:documentation>
+DECISION POINT: How does primary want to add the co-borrower?
+
+ENTER INFO: Primary enters all co-borrower data themselves (MVP model)
+INVITE: Send invitation for co-borrower to enter their own info (Phase 2)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_04</bpmn:incoming>
+      <bpmn:outgoing>Flow_EnterInfo</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Invite</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Enter info path (MVP) -->
+    <bpmn:userTask id="Task_EnterCoBorrowerInfo" name="Enter Co-Borrower Data">
+      <bpmn:documentation>Primary borrower enters all co-borrower information:
+- Personal info (name, SSN, DOB)
+- Citizenship, marital status
+- Contact information
+
+This is the MVP approach where co-borrower doesn't need to log in.</bpmn:documentation>
+      <bpmn:incoming>Flow_EnterInfo</bpmn:incoming>
+      <bpmn:outgoing>Flow_AfterPrimaryEntersInfo</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Invite path -->
+    <bpmn:serviceTask id="Task_DisplayEmailInput" name="Display Email Input">
+      <bpmn:documentation>System displays input field for co-borrower's email address.</bpmn:documentation>
+      <bpmn:incoming>Flow_Invite</bpmn:incoming>
+      <bpmn:outgoing>Flow_05</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:userTask id="Task_EnterCoBorrowerEmail" name="Enter Co-Borrower Email">
+      <bpmn:documentation>Primary borrower enters the co-borrower's email address.
+
+VALIDATION:
+- Must be valid email format
+- Cannot be primary's own email
+- Check if already invited</bpmn:documentation>
+      <bpmn:incoming>Flow_05</bpmn:incoming>
+      <bpmn:incoming>Flow_RetryEmail</bpmn:incoming>
+      <bpmn:outgoing>Flow_06</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_ValidateEmail" name="Validate Email">
+      <bpmn:documentation>System validates:
+- Email format is correct
+- Not primary's own email (self-invite prevention)
+- Not already invited for this application</bpmn:documentation>
+      <bpmn:incoming>Flow_06</bpmn:incoming>
+      <bpmn:outgoing>Flow_07</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_EmailValid" name="Email Valid?">
+      <bpmn:documentation>
+DECISION POINT: Is the entered email valid?
+
+VALID: Continue to name entry
+INVALID: Show error message, allow retry
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_07</bpmn:incoming>
+      <bpmn:outgoing>Flow_EmailValid</bpmn:outgoing>
+      <bpmn:outgoing>Flow_EmailInvalid</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ShowEmailError" name="Show Email Error">
+      <bpmn:documentation>System displays appropriate error:
+- "Please enter a valid email address"
+- "You cannot invite yourself as co-borrower"
+- "An invitation was already sent to this email"</bpmn:documentation>
+      <bpmn:incoming>Flow_EmailInvalid</bpmn:incoming>
+      <bpmn:outgoing>Flow_RetryEmail</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:userTask id="Task_EnterCoBorrowerName" name="Enter Co-Borrower Name">
+      <bpmn:documentation>Primary borrower enters co-borrower's first name for personalized invitation email.</bpmn:documentation>
+      <bpmn:incoming>Flow_EmailValid</bpmn:incoming>
+      <bpmn:outgoing>Flow_08</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_SelectCoBorrowerRole" name="Select Co-Borrower Role">
+      <bpmn:documentation>Primary borrower selects the co-borrower's role:
+- Co-Borrower (will occupy property)
+- Non-Occupant Co-Borrower (won't occupy but on loan)</bpmn:documentation>
+      <bpmn:incoming>Flow_08</bpmn:incoming>
+      <bpmn:outgoing>Flow_09</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_ClickSendInvitation" name="Click Send Invitation">
+      <bpmn:documentation>Primary borrower clicks "Send Invitation" button to send the invite.</bpmn:documentation>
+      <bpmn:incoming>Flow_09</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_CreateInviteRecord" name="Create Invite Record">
+      <bpmn:documentation>System creates:
+- application_parties record (role, status=pending)
+- invitations record (token, email, expiry=7days)
+
+DATA CHANGES:
+- application_parties: new record
+- invitations: new record with unique token</bpmn:documentation>
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_SendInvitationEmail" name="Send Invitation Email">
+      <bpmn:documentation>System sends email to co-borrower containing:
+- Personalized greeting with their name
+- Primary borrower's name
+- Link with unique invite token
+- Expiration notice (7 days)
+
+NOTIFICATION:
+- Recipient: Co-borrower (email)
+- Template: co-borrower-invitation</bpmn:documentation>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:serviceTask id="Task_DisplayConfirmation" name="Display Confirmation">
+      <bpmn:documentation>System displays: "Invitation sent to [email]"
+
+Also shows in-app toast notification confirming the invite was sent.</bpmn:documentation>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_AllowPrimaryContinue" name="Allow Primary to Continue">
+      <bpmn:documentation>System allows primary borrower to continue the wizard without waiting for co-borrower to accept.
+
+Primary can proceed with their sections. Application can be submitted once all required sections are complete.</bpmn:documentation>
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:outgoing>Flow_AllowContinue</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="Start_InWizard" targetRef="Task_DisplayCoBorrowerQuestion" />
+    <bpmn:sequenceFlow id="Flow_02" sourceRef="Task_DisplayCoBorrowerQuestion" targetRef="Gateway_ApplyWithCoBorrower" />
+    <bpmn:sequenceFlow id="Flow_CoBorrowerYes" name="Yes" sourceRef="Gateway_ApplyWithCoBorrower" targetRef="Task_ExpandCoBorrowerSection" />
+    <bpmn:sequenceFlow id="Flow_CoBorrowerNo" name="No" sourceRef="Gateway_ApplyWithCoBorrower" targetRef="End_ContinueWizard" />
+    <bpmn:sequenceFlow id="Flow_03" sourceRef="Task_ExpandCoBorrowerSection" targetRef="Task_DisplayCoBorrowerOptions" />
+    <bpmn:sequenceFlow id="Flow_04" sourceRef="Task_DisplayCoBorrowerOptions" targetRef="Gateway_HowToAdd" />
+    <bpmn:sequenceFlow id="Flow_EnterInfo" name="Enter Their Info" sourceRef="Gateway_HowToAdd" targetRef="Task_EnterCoBorrowerInfo" />
+    <bpmn:sequenceFlow id="Flow_Invite" name="Invite Them" sourceRef="Gateway_HowToAdd" targetRef="Task_DisplayEmailInput" />
+    <bpmn:sequenceFlow id="Flow_AfterPrimaryEntersInfo" sourceRef="Task_EnterCoBorrowerInfo" targetRef="End_ContinueWizard" />
+    <bpmn:sequenceFlow id="Flow_05" sourceRef="Task_DisplayEmailInput" targetRef="Task_EnterCoBorrowerEmail" />
+    <bpmn:sequenceFlow id="Flow_06" sourceRef="Task_EnterCoBorrowerEmail" targetRef="Task_ValidateEmail" />
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Task_ValidateEmail" targetRef="Gateway_EmailValid" />
+    <bpmn:sequenceFlow id="Flow_EmailValid" name="Valid" sourceRef="Gateway_EmailValid" targetRef="Task_EnterCoBorrowerName" />
+    <bpmn:sequenceFlow id="Flow_EmailInvalid" name="Invalid" sourceRef="Gateway_EmailValid" targetRef="Task_ShowEmailError" />
+    <bpmn:sequenceFlow id="Flow_RetryEmail" sourceRef="Task_ShowEmailError" targetRef="Task_EnterCoBorrowerEmail" />
+    <bpmn:sequenceFlow id="Flow_08" sourceRef="Task_EnterCoBorrowerName" targetRef="Task_SelectCoBorrowerRole" />
+    <bpmn:sequenceFlow id="Flow_09" sourceRef="Task_SelectCoBorrowerRole" targetRef="Task_ClickSendInvitation" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_ClickSendInvitation" targetRef="Task_CreateInviteRecord" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_CreateInviteRecord" targetRef="Task_SendInvitationEmail" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_SendInvitationEmail" targetRef="Task_DisplayConfirmation" />
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="Task_DisplayConfirmation" targetRef="Task_AllowPrimaryContinue" />
+    <bpmn:sequenceFlow id="Flow_AllowContinue" sourceRef="Task_AllowPrimaryContinue" targetRef="End_ContinueWizard" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_CoBorrowerInvite">
+    <bpmndi:BPMNPlane id="BPMNPlane_CoBorrowerInvite" bpmnElement="Collaboration_CoBorrowerInvite">
+      <bpmndi:BPMNShape id="Participant_CoBorrowerInvite_di" bpmnElement="Participant_CoBorrowerInvite" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1400" height="500" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_PrimaryBorrower_di" bpmnElement="Lane_PrimaryBorrower" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1370" height="200" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="190" y="280" width="1370" height="300" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="Start_InWizard_di" bpmnElement="Start_InWizard">
+        <dc:Bounds x="232" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="210" y="205" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- Display Co-Borrower Question -->
+      <bpmndi:BPMNShape id="Task_DisplayCoBorrowerQuestion_di" bpmnElement="Task_DisplayCoBorrowerQuestion">
+        <dc:Bounds x="230" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Gateway: Apply with Co-Borrower? -->
+      <bpmndi:BPMNShape id="Gateway_ApplyWithCoBorrower_di" bpmnElement="Gateway_ApplyWithCoBorrower" isMarkerVisible="true">
+        <dc:Bounds x="355" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="335" y="125" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- End: Continue Wizard -->
+      <bpmndi:BPMNShape id="End_ContinueWizard_di" bpmnElement="End_ContinueWizard">
+        <dc:Bounds x="1482" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1455" y="205" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- Expand Co-Borrower Section -->
+      <bpmndi:BPMNShape id="Task_ExpandCoBorrowerSection_di" bpmnElement="Task_ExpandCoBorrowerSection">
+        <dc:Bounds x="430" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Display Options -->
+      <bpmndi:BPMNShape id="Task_DisplayCoBorrowerOptions_di" bpmnElement="Task_DisplayCoBorrowerOptions">
+        <dc:Bounds x="555" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Gateway: How to Add? -->
+      <bpmndi:BPMNShape id="Gateway_HowToAdd_di" bpmnElement="Gateway_HowToAdd" isMarkerVisible="true">
+        <dc:Bounds x="580" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="570" y="125" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- Enter Co-Borrower Info (MVP) -->
+      <bpmndi:BPMNShape id="Task_EnterCoBorrowerInfo_di" bpmnElement="Task_EnterCoBorrowerInfo" bioc:stroke="#205022" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#205022">
+        <dc:Bounds x="655" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Display Email Input -->
+      <bpmndi:BPMNShape id="Task_DisplayEmailInput_di" bpmnElement="Task_DisplayEmailInput">
+        <dc:Bounds x="680" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Enter Co-Borrower Email -->
+      <bpmndi:BPMNShape id="Task_EnterCoBorrowerEmail_di" bpmnElement="Task_EnterCoBorrowerEmail" bioc:stroke="#0d4372" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#0d4372">
+        <dc:Bounds x="805" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Validate Email -->
+      <bpmndi:BPMNShape id="Task_ValidateEmail_di" bpmnElement="Task_ValidateEmail">
+        <dc:Bounds x="805" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Gateway: Email Valid? -->
+      <bpmndi:BPMNShape id="Gateway_EmailValid_di" bpmnElement="Gateway_EmailValid" isMarkerVisible="true">
+        <dc:Bounds x="930" y="345" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="922" y="402" width="66" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- Show Email Error -->
+      <bpmndi:BPMNShape id="Task_ShowEmailError_di" bpmnElement="Task_ShowEmailError" bioc:stroke="#6b3c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#6b3c00">
+        <dc:Bounds x="905" y="460" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Enter Co-Borrower Name -->
+      <bpmndi:BPMNShape id="Task_EnterCoBorrowerName_di" bpmnElement="Task_EnterCoBorrowerName" bioc:stroke="#0d4372" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#0d4372">
+        <dc:Bounds x="1005" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Select Role -->
+      <bpmndi:BPMNShape id="Task_SelectCoBorrowerRole_di" bpmnElement="Task_SelectCoBorrowerRole" bioc:stroke="#0d4372" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#0d4372">
+        <dc:Bounds x="1130" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Click Send Invitation -->
+      <bpmndi:BPMNShape id="Task_ClickSendInvitation_di" bpmnElement="Task_ClickSendInvitation" bioc:stroke="#0d4372" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#0d4372">
+        <dc:Bounds x="1255" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Create Invite Record -->
+      <bpmndi:BPMNShape id="Task_CreateInviteRecord_di" bpmnElement="Task_CreateInviteRecord">
+        <dc:Bounds x="1055" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Send Invitation Email -->
+      <bpmndi:BPMNShape id="Task_SendInvitationEmail_di" bpmnElement="Task_SendInvitationEmail" bioc:stroke="#831311" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#831311">
+        <dc:Bounds x="1180" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Display Confirmation -->
+      <bpmndi:BPMNShape id="Task_DisplayConfirmation_di" bpmnElement="Task_DisplayConfirmation">
+        <dc:Bounds x="1305" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Allow Primary Continue -->
+      <bpmndi:BPMNShape id="Task_AllowPrimaryContinue_di" bpmnElement="Task_AllowPrimaryContinue">
+        <dc:Bounds x="1430" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <!-- Sequence Flow edges -->
+      <bpmndi:BPMNEdge id="Flow_01_di" bpmnElement="Flow_01">
+        <di:waypoint x="250" y="198" />
+        <di:waypoint x="250" y="264" />
+        <di:waypoint x="280" y="264" />
+        <di:waypoint x="280" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02_di" bpmnElement="Flow_02">
+        <di:waypoint x="330" y="370" />
+        <di:waypoint x="343" y="370" />
+        <di:waypoint x="343" y="180" />
+        <di:waypoint x="355" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CoBorrowerYes_di" bpmnElement="Flow_CoBorrowerYes">
+        <di:waypoint x="405" y="180" />
+        <di:waypoint x="418" y="180" />
+        <di:waypoint x="418" y="370" />
+        <di:waypoint x="430" y="370" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="424" y="272" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CoBorrowerNo_di" bpmnElement="Flow_CoBorrowerNo">
+        <di:waypoint x="380" y="155" />
+        <di:waypoint x="380" y="100" />
+        <di:waypoint x="1500" y="100" />
+        <di:waypoint x="1500" y="162" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="933" y="82" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03_di" bpmnElement="Flow_03">
+        <di:waypoint x="530" y="370" />
+        <di:waypoint x="555" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04_di" bpmnElement="Flow_04">
+        <di:waypoint x="605" y="330" />
+        <di:waypoint x="605" y="205" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EnterInfo_di" bpmnElement="Flow_EnterInfo">
+        <di:waypoint x="630" y="180" />
+        <di:waypoint x="655" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="610" y="162" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Invite_di" bpmnElement="Flow_Invite">
+        <di:waypoint x="605" y="205" />
+        <di:waypoint x="605" y="268" />
+        <di:waypoint x="730" y="268" />
+        <di:waypoint x="730" y="330" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="636" y="250" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AfterPrimaryEntersInfo_di" bpmnElement="Flow_AfterPrimaryEntersInfo">
+        <di:waypoint x="755" y="180" />
+        <di:waypoint x="1482" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05_di" bpmnElement="Flow_05">
+        <di:waypoint x="780" y="370" />
+        <di:waypoint x="793" y="370" />
+        <di:waypoint x="793" y="180" />
+        <di:waypoint x="805" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_06_di" bpmnElement="Flow_06">
+        <di:waypoint x="855" y="220" />
+        <di:waypoint x="855" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07_di" bpmnElement="Flow_07">
+        <di:waypoint x="905" y="370" />
+        <di:waypoint x="930" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EmailValid_di" bpmnElement="Flow_EmailValid">
+        <di:waypoint x="980" y="370" />
+        <di:waypoint x="993" y="370" />
+        <di:waypoint x="993" y="180" />
+        <di:waypoint x="1005" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="997" y="272" width="24" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EmailInvalid_di" bpmnElement="Flow_EmailInvalid">
+        <di:waypoint x="955" y="395" />
+        <di:waypoint x="955" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="961" y="425" width="33" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RetryEmail_di" bpmnElement="Flow_RetryEmail">
+        <di:waypoint x="905" y="500" />
+        <di:waypoint x="855" y="500" />
+        <di:waypoint x="855" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_08_di" bpmnElement="Flow_08">
+        <di:waypoint x="1105" y="180" />
+        <di:waypoint x="1130" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_09_di" bpmnElement="Flow_09">
+        <di:waypoint x="1230" y="180" />
+        <di:waypoint x="1255" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1305" y="220" />
+        <di:waypoint x="1305" y="275" />
+        <di:waypoint x="1105" y="275" />
+        <di:waypoint x="1105" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1155" y="370" />
+        <di:waypoint x="1180" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12">
+        <di:waypoint x="1280" y="370" />
+        <di:waypoint x="1305" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13_di" bpmnElement="Flow_13">
+        <di:waypoint x="1405" y="370" />
+        <di:waypoint x="1430" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AllowContinue_di" bpmnElement="Flow_AllowContinue">
+        <di:waypoint x="1480" y="330" />
+        <di:waypoint x="1480" y="255" />
+        <di:waypoint x="1500" y="255" />
+        <di:waypoint x="1500" y="198" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

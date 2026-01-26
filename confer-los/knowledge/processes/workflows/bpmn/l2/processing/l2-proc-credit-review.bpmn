@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_CreditReview" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.43.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:collaboration id="Collaboration_CreditReview">
+    <bpmn:participant id="Participant_CreditProc" name="Processing - Credit Review (L2)" processRef="Process_CreditReview_L2" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_CreditReview_L2" name="Credit Review Process" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Credit">
+      <bpmn:lane id="Lane_Processor_Credit" name="Loan Processor (Human)">
+        <bpmn:flowNodeRef>Task_ReviewInquiryLOX</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ManageDerogatory</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewAuthUser</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Agents_Credit" name="System Agents (Automated)">
+        <bpmn:flowNodeRef>StartEvent_CreditReport</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AnalyzeCredit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Disputes</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OrderSupplement</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Inquiries</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Derogatory</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_CreditCleared</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_CreditReport" name="Credit Report Received">
+      <bpmn:outgoing>Flow_StartToAnalyze</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_AnalyzeCredit" name="Analyze Credit Report">
+      <bpmn:documentation>Extracts inquiries, disputes, derogatory items.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="analyze-credit-report" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StartToAnalyze</bpmn:incoming>
+      <bpmn:outgoing>Flow_AnalyzeToDisputes</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Disputes" name="Disputed Accounts?">
+      <bpmn:documentation>Are there active disputes on tradelines?</bpmn:documentation>
+      <bpmn:incoming>Flow_AnalyzeToDisputes</bpmn:incoming>
+      <bpmn:outgoing>Flow_DisputeYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_DisputeNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_OrderSupplement" name="Order Credit Supplement (Remove Dispute)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="order-credit-supplement" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_DisputeYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_SuppToInquiry</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Inquiries" name="Inquiries &#60; 120 Days?">
+      <bpmn:incoming>Flow_DisputeNo</bpmn:incoming>
+      <bpmn:incoming>Flow_SuppToInquiry</bpmn:incoming>
+      <bpmn:incoming>Flow_InquiryResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_InquiryYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_InquiryNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ReviewInquiryLOX" name="Review Inquiry LOX">
+      <bpmn:documentation>Confirm no new debt or add debt.</bpmn:documentation>
+      <bpmn:incoming>Flow_InquiryYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_InquiryResolved</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Derogatory" name="Derogatory Items?">
+      <bpmn:documentation>Collections, Charge-offs, Judgments?</bpmn:documentation>
+      <bpmn:incoming>Flow_InquiryNo</bpmn:incoming>
+      <bpmn:incoming>Flow_DerogResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_DerogYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_DerogNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ManageDerogatory" name="Manage Derogatory Items">
+      <bpmn:documentation>Obtain payoff proof or explanation.</bpmn:documentation>
+      <bpmn:incoming>Flow_DerogYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_DerogResolved</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReviewAuthUser" name="Review Authorized Users">
+      <bpmn:documentation>Exclude if not borrower's debt.</bpmn:documentation>
+      <bpmn:incoming>Flow_DerogNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_AuthUserEnd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="EndEvent_CreditCleared" name="Credit Review Complete">
+      <bpmn:incoming>Flow_AuthUserEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToAnalyze" sourceRef="StartEvent_CreditReport" targetRef="Task_AnalyzeCredit" />
+    <bpmn:sequenceFlow id="Flow_AnalyzeToDisputes" sourceRef="Task_AnalyzeCredit" targetRef="Gateway_Disputes" />
+    <bpmn:sequenceFlow id="Flow_DisputeYes" name="Yes" sourceRef="Gateway_Disputes" targetRef="Task_OrderSupplement" />
+    <bpmn:sequenceFlow id="Flow_DisputeNo" name="No" sourceRef="Gateway_Disputes" targetRef="Gateway_Inquiries" />
+    <bpmn:sequenceFlow id="Flow_SuppToInquiry" sourceRef="Task_OrderSupplement" targetRef="Gateway_Inquiries" />
+    <bpmn:sequenceFlow id="Flow_InquiryYes" name="Yes" sourceRef="Gateway_Inquiries" targetRef="Task_ReviewInquiryLOX" />
+    <bpmn:sequenceFlow id="Flow_InquiryResolved" sourceRef="Task_ReviewInquiryLOX" targetRef="Gateway_Inquiries" />
+    <bpmn:sequenceFlow id="Flow_InquiryNo" name="No" sourceRef="Gateway_Inquiries" targetRef="Gateway_Derogatory" />
+    <bpmn:sequenceFlow id="Flow_DerogYes" name="Yes" sourceRef="Gateway_Derogatory" targetRef="Task_ManageDerogatory" />
+    <bpmn:sequenceFlow id="Flow_DerogResolved" sourceRef="Task_ManageDerogatory" targetRef="Gateway_Derogatory" />
+    <bpmn:sequenceFlow id="Flow_DerogNo" name="No" sourceRef="Gateway_Derogatory" targetRef="Task_ReviewAuthUser" />
+    <bpmn:sequenceFlow id="Flow_AuthUserEnd" sourceRef="Task_ReviewAuthUser" targetRef="EndEvent_CreditCleared" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Credit">
+    <bpmndi:BPMNPlane id="BPMNPlane_Credit" bpmnElement="Collaboration_CreditReview">
+      <bpmndi:BPMNShape id="Participant_Credit_di" bpmnElement="Participant_CreditProc" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1300" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agents_Credit_di" bpmnElement="Lane_Agents_Credit" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="190" y="80" width="1270" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Processor_Credit_di" bpmnElement="Lane_Processor_Credit" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="280" width="1270" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Credit_di" bpmnElement="StartEvent_CreditReport">
+        <dc:Bounds x="252" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="238" y="205" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Analyze_di" bpmnElement="Task_AnalyzeCredit">
+        <dc:Bounds x="340" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Disputes_di" bpmnElement="Gateway_Disputes" isMarkerVisible="true">
+        <dc:Bounds x="495" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="494" y="118" width="52" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Supp_di" bpmnElement="Task_OrderSupplement">
+        <dc:Bounds x="580" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Inquiries_di" bpmnElement="Gateway_Inquiries" isMarkerVisible="true">
+        <dc:Bounds x="720" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="709" y="106" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InquiryLOX_di" bpmnElement="Task_ReviewInquiryLOX">
+        <dc:Bounds x="695" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Derog_di" bpmnElement="Gateway_Derogatory" isMarkerVisible="true">
+        <dc:Bounds x="900" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="882" y="118" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ManageDerog_di" bpmnElement="Task_ManageDerogatory">
+        <dc:Bounds x="875" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AuthUser_di" bpmnElement="Task_ReviewAuthUser">
+        <dc:Bounds x="1020" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Credit_di" bpmnElement="EndEvent_CreditCleared">
+        <dc:Bounds x="1172" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1156" y="405" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToAnalyze_di" bpmnElement="Flow_StartToAnalyze">
+        <di:waypoint x="288" y="180" />
+        <di:waypoint x="340" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AnalyzeToDisputes_di" bpmnElement="Flow_AnalyzeToDisputes">
+        <di:waypoint x="440" y="180" />
+        <di:waypoint x="495" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DisputeYes_di" bpmnElement="Flow_DisputeYes">
+        <di:waypoint x="520" y="155" />
+        <di:waypoint x="520" y="120" />
+        <di:waypoint x="580" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="526" y="135" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DisputeNo_di" bpmnElement="Flow_DisputeNo">
+        <di:waypoint x="545" y="180" />
+        <di:waypoint x="720" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="626" y="162" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SuppToInquiry_di" bpmnElement="Flow_SuppToInquiry">
+        <di:waypoint x="680" y="120" />
+        <di:waypoint x="745" y="120" />
+        <di:waypoint x="745" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InquiryYes_di" bpmnElement="Flow_InquiryYes">
+        <di:waypoint x="745" y="205" />
+        <di:waypoint x="745" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="751" y="260" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InquiryResolved_di" bpmnElement="Flow_InquiryResolved">
+        <di:waypoint x="695" y="380" />
+        <di:waypoint x="660" y="380" />
+        <di:waypoint x="660" y="180" />
+        <di:waypoint x="720" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InquiryNo_di" bpmnElement="Flow_InquiryNo">
+        <di:waypoint x="770" y="180" />
+        <di:waypoint x="900" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="828" y="162" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DerogYes_di" bpmnElement="Flow_DerogYes">
+        <di:waypoint x="925" y="205" />
+        <di:waypoint x="925" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="931" y="260" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DerogResolved_di" bpmnElement="Flow_DerogResolved">
+        <di:waypoint x="875" y="380" />
+        <di:waypoint x="850" y="380" />
+        <di:waypoint x="850" y="180" />
+        <di:waypoint x="900" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DerogNo_di" bpmnElement="Flow_DerogNo">
+        <di:waypoint x="950" y="180" />
+        <di:waypoint x="985" y="180" />
+        <di:waypoint x="985" y="380" />
+        <di:waypoint x="1020" y="380" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="978" y="278" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AuthUserEnd_di" bpmnElement="Flow_AuthUserEnd">
+        <di:waypoint x="1120" y="380" />
+        <di:waypoint x="1172" y="380" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

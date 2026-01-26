@@ -1,0 +1,1483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_AgenticProcessingL1" targetNamespace="https://confersolutions.ai/bpmn/l1/processing-agentic" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_AgenticProcessing">
+    <bpmn:participant id="Participant_AgenticProcessing" name="Agentic Processing Phase" processRef="Process_AgenticProcessing_L1" />
+    <bpmn:textAnnotation id="Note_AgenticVsTraditional">
+      <bpmn:text>AGENTIC vs TRADITIONAL PROCESSING
+
+Traditional (l1-03-processing.bpmn):
+- Sequential human-driven tasks
+- 5-15 business days
+- Processor executes each step
+
+Agentic (this diagram):
+- Event-driven parallel agents
+- 3-7 business days target
+- Processor supervises agents
+- Human fallback when AI uncertain
+
+Key Principle: "As soon as data arrives,
+agents act. Don't wait for completeness."</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_AgentCatalog">
+      <bpmn:text>15 ORCHESTRATING AGENTS
+
+Third-Party Orders:
+1. Credit Agent
+2. Title Agent
+3. Appraisal Agent
+4. Employment/VOE Agent
+5. Insurance Agent
+6. 4506-C/IRS Agent
+
+Document Processing:
+7. Doc Request Agent
+8. Doc Classification Agent (AI)
+9. Doc Extraction Agent (AI)
+10. Verification Agent (AI)
+
+Decision Support:
+11. UW Confidence Agent
+12. Condition Agent
+13. Compliance Agent (US+MX)
+14. Risk Agent (AI)
+15. Fraud Detection Agent (AI)
+
+See Task 059a for full specifications.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_HumanFallback">
+      <bpmn:text>HUMAN FALLBACK PRINCIPLE
+
+"When AI is 99% confident but not 100%,
+human decides."
+
+All AI-powered agents emit uncertainty
+events when confidence &lt; 100%.
+Processor reviews and confirms.
+
+Escalation Path:
+L1: Processor (4h SLA)
+L2: Senior Processor (24h)
+L3: Processing Manager
+L4: Compliance Officer</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Compliance">
+      <bpmn:text>BI-NATIONAL COMPLIANCE
+
+US Regulations:
+- FCRA (credit authorization)
+- TRID (LE within 3 days)
+- ECOA (appraisal delivery)
+- VOE timing (10 days before close)
+
+Mexico Regulations:
+- Fideicomiso setup (foreign ownership)
+- Notario Publico (title transfer)
+- RFC (Mexican tax ID)
+- Apostille requirements
+
+Compliance Agent tracks both.</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_AgenticProcessing_L1" name="Agentic Processing - L1 Process Overview" isExecutable="false">
+    <bpmn:documentation>
+CONFER LOAN ORIGINATION SYSTEM - L1 AGENTIC PROCESSING PHASE
+
+PURPOSE: Model an AI-first, event-driven processing phase where autonomous
+agents operate in parallel, triggered by events rather than sequential
+human task completion.
+
+AUDIENCE: Business analysts, process owners, AI/ML engineers, architects.
+
+PARENT: L0 Task "Processing" (Task_Processing)
+ALTERNATIVE: Traditional processing (l1-03-processing.bpmn)
+
+KEY CHARACTERISTICS:
+- Event-driven: Agents triggered by events, not manual handoffs
+- Parallel execution: Multiple agents work simultaneously
+- Progressive confidence: Build toward UW readiness incrementally
+- Human supervision: Processor oversees agents, handles exceptions
+- Human fallback: ALWAYS when AI confidence &lt; 100%
+- Bi-national: US regulations for buyers + Mexico for property
+
+TECHNOLOGY STACK:
+- Temporal: Durable workflow execution
+- LangGraph: AI agent reasoning (inside Temporal activities)
+- Claude/GPT-4: Document understanding, classification
+- PostgreSQL: State persistence, audit trail
+
+AGENT COUNT: 15 Orchestrating Agents + 12 Worker Agents (Task 059b)
+
+DURATION TARGET: 3-7 business days (vs 5-15 traditional)
+
+SUPERSEDES: Traditional sequential processing for clients opting into agentic mode.
+    </bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_AgenticProcessing">
+      <bpmn:lane id="Lane_Agents" name="Orchestrating Agents (Automated)">
+        <bpmn:documentation>
+ACTORS: 15 Autonomous Orchestrating Agents
+
+These agents run automatically when triggered by events.
+They are implemented as Temporal workflows with LangGraph
+for AI reasoning capabilities.
+
+AGENT TYPES:
+- Third-Party Ordering: Credit, Title, Appraisal, VOE, Insurance, 4506-C
+- Document Processing: Request, Classification, Extraction, Verification
+- Decision Support: UW Confidence, Condition, Compliance, Risk, Fraud
+
+TRIGGERING:
+Each agent has defined trigger events and prerequisites.
+Agents activate when prerequisites are met (or per Trigger Policy).
+
+OUTPUT:
+Agents emit events that update application state and trigger
+other agents or human review tasks.
+
+WORKER AGENTS:
+Orchestrating agents call Worker Agents (Task 059b) for atomic
+operations like sending emails, generating PDFs, etc.
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Event_ApplicationSubmitted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_InitialFork</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DocRequestAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_TitleAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_4506CAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FraudDetectionAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_WaitConsents</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_CreditAuthReceived</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreditAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_AppraisalAgreementSigned</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AppraisalAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_InsuranceAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SubProcess_DocumentProcessing</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UWConfidenceAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RiskAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ConditionAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ComplianceAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VOEAgent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ConfidenceCheck</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_ConfidenceThresholdReached</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Borrower" name="Borrower">
+        <bpmn:documentation>
+ACTOR: Borrower (and Co-Borrower if applicable)
+
+RESPONSIBILITIES:
+- Sign required consents (credit authorization, appraisal agreement)
+- Upload requested documents
+- Respond to clarification requests
+- Provide additional information as needed
+
+UI: Borrower Portal - Document Upload, Consent Signing
+
+NOTE: Multiple borrowers supported via application_id binding.
+All agents process documents/consents for all borrowers on the application.
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_SignCreditAuth</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SignAppraisalAgreement</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UploadDocuments</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_HumanSupervision" name="Human Supervision (Processor)">
+        <bpmn:documentation>
+ACTOR: Loan Processor (Agent Supervisor)
+
+ROLE SHIFT: In agentic processing, the processor shifts from
+task executor to agent supervisor and exception handler.
+
+RESPONSIBILITIES:
+- Monitor agent activity feed
+- Review items flagged by AI (confidence &lt; 100%)
+- Resolve discrepancies
+- Handle escalations
+- Approve complex conditions
+- Conduct final file review
+
+SLAs:
+- Document classification review: 2 hours
+- Extraction verification: 2 hours
+- Discrepancy resolution: 4 hours
+- Fraud alert investigation: 1 hour
+
+UI: Processing Dashboard - Agent Activity Feed, Exception Queue
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_ReviewClassificationUncertain</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewExtractionUncertain</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ResolveDiscrepancy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_InvestigateFraudAlert</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FinalFileReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ToUnderwriting</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- START EVENT -->
+    <bpmn:startEvent id="Event_ApplicationSubmitted" name="Application Submitted">
+      <bpmn:documentation>
+TRIGGER: application.submitted event from Application phase
+
+ENTRY STATE:
+- Application status: "submitted"
+- Basic borrower data collected (URLA 1003)
+- Property information available
+- Initial documents may be attached
+
+WHAT IT TRIGGERS (No Prerequisites):
+- Doc Request Agent
+- Title Agent
+- 4506-C/IRS Agent
+- Fraud Detection Agent (initial signals)
+
+WHAT WAITS FOR PREREQUISITES:
+- Credit Agent (needs credit authorization)
+- Appraisal Agent (needs agreement + property confirmed)
+- Insurance Agent (needs property confirmed)
+
+EVENT DATA:
+{
+  application_id: string,
+  borrowers: [{ borrower_id, role, ssn, name }],
+  property: { address, type, value_estimate },
+  loan: { amount, type, purpose }
+}
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_StartToFork</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_AppSubmitted" messageRef="Message_ApplicationSubmitted" />
+    </bpmn:startEvent>
+
+    <!-- INITIAL PARALLEL FORK - No Prerequisites -->
+    <bpmn:parallelGateway id="Gateway_InitialFork" name="Trigger Initial Agents">
+      <bpmn:documentation>
+PARALLEL FORK: Launch agents with no prerequisites
+
+These agents can start immediately upon application submission:
+- Doc Request Agent: Generate document checklist
+- Title Agent: Order preliminary title search
+- 4506-C/IRS Agent: Order IRS transcripts
+- Fraud Detection Agent: Start monitoring for fraud signals
+
+All run in parallel to maximize speed.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_StartToFork</bpmn:incoming>
+      <bpmn:outgoing>Flow_ForkToDocRequest</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ForkToTitle</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ForkTo4506C</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ForkToFraud</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ForkToWaitConsents</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <!-- AGENTS WITH NO PREREQUISITES -->
+    <bpmn:serviceTask id="Task_DocRequestAgent" name="Doc Request Agent">
+      <bpmn:documentation>
+AGENT: Doc Request Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: application.submitted
+PREREQUISITES: None
+
+PURPOSE:
+Generate dynamic document checklist based on:
+- Loan type (conventional, FHA, VA, jumbo)
+- Employment type (W-2, self-employed, retired)
+- Income sources declared
+- Property type
+- Borrower count
+
+OUTPUT EVENT: checklist.generated
+
+WORKER AGENTS CALLED:
+- Email Agent: Send checklist to borrower
+- Notification Agent: In-app notification
+
+HUMAN FALLBACK: Never needed (deterministic logic)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkToDocRequest</bpmn:incoming>
+      <bpmn:outgoing>Flow_DocRequestToUpload</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_TitleAgent" name="Title Agent">
+      <bpmn:documentation>
+AGENT: Title Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: application.submitted
+PREREQUISITES: None
+
+PURPOSE:
+Order preliminary title search from title company.
+
+ACTIONS:
+1. Prepare title order request
+2. Submit to title company API
+3. Track order status
+4. Receive title commitment
+
+OUTPUT EVENTS:
+- thirdparty.title.ordered
+- thirdparty.title.received (when returned)
+
+DURATION: 3-5 business days typical
+
+HUMAN FALLBACK: On API failure only
+
+CIRCUIT BREAKER: Implemented for title company API
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkToTitle</bpmn:incoming>
+      <bpmn:outgoing>Flow_TitleToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_4506CAgent" name="4506-C/IRS Agent">
+      <bpmn:documentation>
+AGENT: 4506-C/IRS Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: application.submitted
+PREREQUISITES: None
+
+PURPOSE:
+Order IRS tax transcripts via 4506-C form.
+
+ACTIONS:
+1. Generate 4506-C form for each borrower
+2. Submit to IRS processing service
+3. Track request status
+4. Receive transcripts
+
+OUTPUT EVENTS:
+- thirdparty.4506c.ordered
+- thirdparty.4506c.received (when returned)
+
+DURATION: ~3 weeks typical (IRS processing)
+
+NOTE: Order early due to long turnaround time.
+
+HUMAN FALLBACK: On API failure only
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkTo4506C</bpmn:incoming>
+      <bpmn:outgoing>Flow_4506CToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_FraudDetectionAgent" name="Fraud Detection Agent">
+      <bpmn:documentation>
+AGENT: Fraud Detection Agent
+TYPE: Orchestrating (AI-Powered)
+TRIGGER: application.submitted, document.*, thirdparty.credit.received
+PREREQUISITES: Varies by signal type
+
+PURPOSE:
+Continuously monitor for fraud patterns across all data.
+
+AI CAPABILITIES:
+- Identity verification mismatches
+- Income inflation patterns
+- Property value manipulation
+- Straw buyer indicators
+- Occupancy fraud signals
+- Employment fabrication
+
+OUTPUT EVENTS:
+- fraud.cleared (no issues found)
+- fraud.alert.triggered (issues detected)
+
+HUMAN FALLBACK: **ALWAYS on alert**
+When fraud.alert.triggered, ALL agents pause until
+human clears the alert.
+
+RUNS CONTINUOUSLY throughout processing.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkToFraud</bpmn:incoming>
+      <bpmn:outgoing>Flow_FraudToContinuous</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- CONSENT WAIT GATEWAY -->
+    <bpmn:eventBasedGateway id="Gateway_WaitConsents" name="Wait for Consents">
+      <bpmn:documentation>
+EVENT-BASED GATEWAY: Wait for borrower consents
+
+This gateway represents the system waiting for
+borrower actions before triggering prerequisite-gated agents.
+
+WAITING FOR:
+1. Credit Authorization - unlocks Credit Agent
+2. Appraisal Agreement - unlocks Appraisal Agent
+3. Property Confirmation - unlocks Insurance Agent
+
+These can arrive in any order.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkToWaitConsents</bpmn:incoming>
+      <bpmn:outgoing>Flow_WaitToCreditAuth</bpmn:outgoing>
+      <bpmn:outgoing>Flow_WaitToAppraisalAgreement</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+
+    <!-- BORROWER CONSENT TASKS -->
+    <bpmn:userTask id="Task_SignCreditAuth" name="Sign Credit Authorization">
+      <bpmn:documentation>
+TASK: Borrower Signs Credit Authorization
+ACTOR: Borrower (each borrower on application)
+UI: Borrower Portal - Consent Forms
+
+PURPOSE:
+Obtain FCRA-compliant authorization to pull credit.
+
+BORROWER ACTIONS:
+1. Review credit authorization disclosure
+2. E-sign consent form
+3. Each co-borrower must also sign
+
+OUTPUT EVENT: consent.credit_authorization.received
+
+REGULATORY: FCRA requires explicit consent before credit pull.
+
+NOTE: Per-borrower consent tracked. Credit Agent orders
+credit for each borrower as their consent is received.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToSignCreditAuth</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreditAuthToEvent</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_SignAppraisalAgreement" name="Sign Appraisal Agreement">
+      <bpmn:documentation>
+TASK: Borrower Signs Appraisal Agreement
+ACTOR: Borrower
+UI: Borrower Portal - Consent Forms
+
+PURPOSE:
+Obtain agreement for appraisal fee and process.
+
+BORROWER ACTIONS:
+1. Review appraisal fee disclosure
+2. Acknowledge non-refundable fee
+3. E-sign agreement
+
+OUTPUT EVENT: consent.appraisal_agreement.signed
+
+PREREQUISITE FOR: Appraisal Agent activation
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToSignAppraisalAgreement</bpmn:incoming>
+      <bpmn:outgoing>Flow_AppraisalAgreementToEvent</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- CONSENT RECEIVED EVENTS -->
+    <bpmn:intermediateCatchEvent id="Event_CreditAuthReceived" name="Credit Auth Received">
+      <bpmn:documentation>
+EVENT: consent.credit_authorization.received
+
+TRIGGERED BY: Borrower completing credit authorization
+
+UNLOCKS: Credit Agent
+
+DATA:
+{
+  borrower_id: string,
+  application_id: string,
+  consent_timestamp: ISO8601,
+  consent_document_id: string
+}
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_WaitToCreditAuth</bpmn:incoming>
+      <bpmn:incoming>Flow_CreditAuthToEvent</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreditAuthToAgent</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_CreditAuth" messageRef="Message_CreditAuthReceived" />
+    </bpmn:intermediateCatchEvent>
+
+    <bpmn:intermediateCatchEvent id="Event_AppraisalAgreementSigned" name="Appraisal Agreement Signed">
+      <bpmn:documentation>
+EVENT: consent.appraisal_agreement.signed
+
+TRIGGERED BY: Borrower completing appraisal agreement
+
+UNLOCKS: Appraisal Agent (also needs property.confirmed)
+
+DATA:
+{
+  application_id: string,
+  consent_timestamp: ISO8601,
+  fee_amount: number,
+  consent_document_id: string
+}
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_WaitToAppraisalAgreement</bpmn:incoming>
+      <bpmn:incoming>Flow_AppraisalAgreementToEvent</bpmn:incoming>
+      <bpmn:outgoing>Flow_AppraisalAgreementToAgent</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_AppraisalAgreement" messageRef="Message_AppraisalAgreementSigned" />
+    </bpmn:intermediateCatchEvent>
+
+    <!-- PREREQUISITE-GATED AGENTS -->
+    <bpmn:serviceTask id="Task_CreditAgent" name="Credit Agent">
+      <bpmn:documentation>
+AGENT: Credit Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: consent.credit_authorization.received
+PREREQUISITES: Signed credit authorization
+
+PURPOSE:
+Order tri-merge credit report from credit bureaus.
+
+ACTIONS:
+1. Validate SSN and borrower info
+2. Submit credit pull to Equifax, Experian, TransUnion
+3. Receive merged credit report
+4. Store credit data
+
+OUTPUT EVENTS:
+- thirdparty.credit.ordered
+- thirdparty.credit.received (when returned)
+
+DOWNSTREAM:
+- UW Confidence Agent (credit score component)
+- Risk Agent (risk assessment)
+- Fraud Detection Agent (credit fraud signals)
+
+DURATION: Minutes (real-time API)
+
+CO-BORROWER: Orders credit for each borrower separately
+as each consent is received.
+
+HUMAN FALLBACK: On API failure only
+
+CIRCUIT BREAKER: Implemented for credit bureau APIs
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_CreditAuthToAgent</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreditToRisk</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_AppraisalAgent" name="Appraisal Agent">
+      <bpmn:documentation>
+AGENT: Appraisal Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: consent.appraisal_agreement.signed
+PREREQUISITES: Signed agreement + property.confirmed
+
+PURPOSE:
+Queue appraisal order through AMC (Appraisal Management Company).
+
+ACTIONS:
+1. Prepare appraisal order with property details
+2. Submit to AMC
+3. Track appraiser assignment
+4. Track inspection scheduling
+5. Receive appraisal report
+
+OUTPUT EVENTS:
+- thirdparty.appraisal.ordered
+- thirdparty.appraisal.received (when returned)
+
+REGULATORY: AIR (Appraiser Independence Requirements)
+- Agent routes to AMC, never selects individual appraiser
+
+DURATION: 5-10 business days typical
+
+HUMAN FALLBACK: On API failure only
+
+CIRCUIT BREAKER: Implemented for AMC API
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AppraisalAgreementToAgent</bpmn:incoming>
+      <bpmn:outgoing>Flow_AppraisalToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_InsuranceAgent" name="Insurance Agent">
+      <bpmn:documentation>
+AGENT: Insurance Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: property.confirmed
+PREREQUISITES: Property details confirmed
+
+PURPOSE:
+Track and facilitate homeowner's insurance (HOI).
+
+ACTIONS:
+1. Generate insurance requirements based on property
+2. Send insurance checklist to borrower
+3. Track HOI binder receipt
+4. Verify coverage meets requirements
+
+OUTPUT EVENTS:
+- thirdparty.insurance.ordered (request sent)
+- thirdparty.insurance.received (binder received)
+
+HUMAN FALLBACK: On coverage issues
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_PropertyToInsurance</bpmn:incoming>
+      <bpmn:outgoing>Flow_InsuranceToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- DOCUMENT UPLOAD -->
+    <bpmn:userTask id="Task_UploadDocuments" name="Upload Documents">
+      <bpmn:documentation>
+TASK: Borrower Uploads Documents
+ACTOR: Borrower
+UI: Borrower Portal - Document Upload
+
+PURPOSE:
+Borrower provides requested documentation.
+
+BORROWER ACTIONS:
+1. View document checklist
+2. Upload documents for each item
+3. Receive instant AI feedback (classification, quality)
+
+UPLOAD FEATURES:
+- Drag and drop interface
+- Mobile camera capture
+- INSTANT AI classification
+- Real-time quality feedback
+
+OUTPUT EVENT: document.uploaded (for EACH document)
+
+KEY DIFFERENCE FROM TRADITIONAL:
+Documents are processed IMMEDIATELY as they arrive,
+not batched. Each upload triggers the document
+processing subprocess.
+
+DURATION: Variable (borrower dependent)
+TYPICAL: 2-5 days for complete upload
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DocRequestToUpload</bpmn:incoming>
+      <bpmn:outgoing>Flow_UploadToDocProcessing</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false" />
+    </bpmn:userTask>
+
+    <!-- DOCUMENT PROCESSING SUBPROCESS (COLLAPSED) -->
+    <bpmn:subProcess id="SubProcess_DocumentProcessing" name="Document Processing Agents" triggeredByEvent="false">
+      <bpmn:documentation>
+SUBPROCESS: Document Processing Pipeline (COLLAPSED)
+
+This subprocess handles each document as it arrives.
+Contains 3 AI-powered agents that work sequentially:
+
+1. DOC CLASSIFICATION AGENT
+   - AI classifies document type
+   - Emits: document.classified OR document.classification.uncertain
+   - Human fallback: ALWAYS if confidence &lt; 100%
+
+2. DOC EXTRACTION AGENT
+   - OCR + AI extracts data from document
+   - Emits: document.extracted OR document.extraction.uncertain
+   - Human fallback: ALWAYS if confidence &lt; 100%
+
+3. VERIFICATION AGENT
+   - Compares extracted data to application data
+   - Emits: document.verified OR document.verification.discrepancy
+   - Human fallback: ALWAYS on discrepancy
+
+EACH DOCUMENT PROCESSED INDEPENDENTLY
+No waiting for batch completion.
+
+L2 DIAGRAM: l2/processing/l2-document-processing-agents.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_UploadToDocProcessing</bpmn:incoming>
+      <bpmn:outgoing>Flow_DocProcessingToConfidence</bpmn:outgoing>
+    </bpmn:subProcess>
+
+    <!-- HUMAN FALLBACK TASKS -->
+    <bpmn:userTask id="Task_ReviewClassificationUncertain" name="Review Uncertain Classification">
+      <bpmn:documentation>
+TASK: Review AI Classification (Uncertain)
+ACTOR: Loan Processor
+UI: Processing Dashboard - Exception Queue
+
+TRIGGER: document.classification.uncertain
+
+PURPOSE:
+AI was not 100% confident in document classification.
+Human reviews and confirms correct classification.
+
+PROCESSOR ACTIONS:
+1. View document in review interface
+2. See AI's suggested classifications with confidence %
+3. Confirm correct classification OR manually classify
+4. Document is re-queued for extraction
+
+SLA: 2 hours
+ESCALATE: After 4 hours to Senior Processor
+
+OUTPUT EVENT: document.classified (human confirmed)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ClassificationUncertain</bpmn:incoming>
+      <bpmn:outgoing>Flow_ClassificationReviewed</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_ReviewExtractionUncertain" name="Review Uncertain Extraction">
+      <bpmn:documentation>
+TASK: Review AI Extraction (Uncertain)
+ACTOR: Loan Processor
+UI: Processing Dashboard - Exception Queue
+
+TRIGGER: document.extraction.uncertain
+
+PURPOSE:
+AI was not 100% confident in data extraction.
+Human reviews and corrects extracted values.
+
+PROCESSOR ACTIONS:
+1. View document with extracted data overlay
+2. See flagged fields with low confidence
+3. Correct values as needed
+4. Approve extraction
+
+SLA: 2 hours
+ESCALATE: After 4 hours to Senior Processor
+
+OUTPUT EVENT: document.extracted (human verified)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ExtractionUncertain</bpmn:incoming>
+      <bpmn:outgoing>Flow_ExtractionReviewed</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_ResolveDiscrepancy" name="Resolve Discrepancy">
+      <bpmn:documentation>
+TASK: Resolve Data Discrepancy
+ACTOR: Loan Processor
+UI: Processing Dashboard - Exception Queue
+
+TRIGGER: document.verification.discrepancy
+
+PURPOSE:
+Verification agent found mismatch between document
+data and application data. Human resolves.
+
+EXAMPLES:
+- Income on paystub doesn't match stated income
+- Employer name differs slightly
+- Address history inconsistency
+
+PROCESSOR ACTIONS:
+1. Review discrepancy details
+2. Contact borrower if clarification needed
+3. Update application OR document as appropriate
+4. Document resolution reason
+5. Clear discrepancy
+
+SLA: 4 hours
+ESCALATE: After 8 hours to Senior Processor
+
+OUTPUT EVENT: document.verified (discrepancy resolved)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DiscrepancyDetected</bpmn:incoming>
+      <bpmn:outgoing>Flow_DiscrepancyResolved</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_InvestigateFraudAlert" name="Investigate Fraud Alert">
+      <bpmn:documentation>
+TASK: Investigate Fraud Alert
+ACTOR: Loan Processor (trained fraud reviewer)
+UI: Processing Dashboard - Fraud Investigation
+
+TRIGGER: fraud.alert.triggered
+
+PURPOSE:
+Fraud Detection Agent identified potential fraud signals.
+Human investigates and determines if fraud is present.
+
+CRITICAL: When this task activates, ALL other agents
+are paused until fraud is cleared or confirmed.
+
+PROCESSOR ACTIONS:
+1. Review fraud alert details
+2. Examine flagged data points
+3. Contact borrower if appropriate
+4. Consult with fraud specialist if needed
+5. Decision: Clear OR Confirm Fraud
+
+IF CLEARED:
+- All agents resume
+- OUTPUT EVENT: fraud.cleared
+
+IF CONFIRMED:
+- Application marked for decline
+- Escalate to Compliance Officer
+- OUTPUT EVENT: fraud.confirmed
+
+SLA: 1 hour
+ESCALATE: After 2 hours to Processing Manager
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_FraudAlertToInvestigate</bpmn:incoming>
+      <bpmn:outgoing>Flow_FraudInvestigated</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- DECISION SUPPORT AGENTS -->
+    <bpmn:serviceTask id="Task_UWConfidenceAgent" name="UW Confidence Agent">
+      <bpmn:documentation>
+AGENT: UW Confidence Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: Multiple events (document.verified, thirdparty.*.received, etc.)
+PREREQUISITES: None (continuously updates)
+
+PURPOSE:
+Maintain progressive underwriting confidence score.
+Score builds incrementally as data arrives.
+
+CONFIDENCE COMPONENTS (100 points total):
+- Identity Verified:      0-10 pts
+- Income Verified:        0-20 pts
+- Employment Verified:    0-10 pts
+- Assets Verified:        0-15 pts
+- Credit Assessed:        0-15 pts
+- DTI Calculated:         0-5 pts
+- Property Valued:        0-15 pts
+- Title Clear:            0-5 pts
+- Insurance Confirmed:    0-3 pts
+- Fraud Cleared:          0-2 pts
+
+NEGATIVE SCORING:
+Score can decrease based on:
+- Verification failures: -10 to -25 pts
+- Credit worse than stated: -5 to -15 pts
+- Fraud alert: -20 pts (until cleared)
+- Appraisal below purchase: -10 pts
+- Title issues: -10 pts
+
+LOAN-TYPE SPECIFIC:
+Different loan types use different weight models.
+(See Task 059a Section 7.5)
+
+THRESHOLDS:
+- 60+: "Conditionally Processable"
+- 80+: "Ready for UW Decision"
+- 90+: "Clear to Close Ready"
+
+OUTPUT EVENT: confidence.updated
+
+HUMAN FALLBACK: Never (calculation only)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_TitleToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_4506CToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_DocProcessingToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_AppraisalToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_InsuranceToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_RiskToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_ConditionToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_ComplianceToConfidence</bpmn:incoming>
+      <bpmn:incoming>Flow_VOEToConfidence</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConfidenceToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_RiskAgent" name="Risk Agent">
+      <bpmn:documentation>
+AGENT: Risk Agent
+TYPE: Orchestrating (AI-Powered)
+TRIGGER: thirdparty.credit.received
+PREREQUISITES: Credit report received
+
+PURPOSE:
+Perform initial risk assessment based on credit
+and application data.
+
+AI CAPABILITIES:
+- Credit risk scoring
+- DTI analysis
+- LTV risk assessment
+- Property risk factors
+- Borrower risk profile
+
+OUTPUT EVENTS:
+- risk.assessed (with risk level)
+
+DOWNSTREAM: UW Confidence Agent, Condition Agent
+
+HUMAN FALLBACK: On edge cases (borderline risk)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_CreditToRisk</bpmn:incoming>
+      <bpmn:outgoing>Flow_RiskToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ConditionAgent" name="Condition Agent">
+      <bpmn:documentation>
+AGENT: Condition Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: Various (risk.assessed, compliance.checked, etc.)
+PREREQUISITES: Varies
+
+PURPOSE:
+Track underwriting conditions and clear them
+as supporting documentation arrives.
+
+ACTIONS:
+1. Generate initial conditions based on risk/compliance
+2. Track each condition status
+3. Auto-clear conditions when requirements met
+4. Flag complex conditions for human review
+
+OUTPUT EVENTS:
+- condition.generated
+- condition.cleared
+- condition.requires_review
+
+WORKER AGENTS CALLED:
+- Email Agent: Send condition notices
+- PDF Generator Agent: Generate condition letters
+
+HUMAN FALLBACK: On complex conditions
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_RiskToCondition</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConditionToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ComplianceAgent" name="Compliance Agent (US+MX)">
+      <bpmn:documentation>
+AGENT: Compliance Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: Various (application.submitted, thirdparty.*.received, etc.)
+PREREQUISITES: Varies
+
+PURPOSE:
+Track US AND Mexico regulatory compliance requirements.
+
+US COMPLIANCE:
+- FCRA: Credit authorization before pull
+- TRID LE: Within 3 business days of application (6-piece trigger)
+- TRID CD: 3 days before closing
+- ECOA: Appraisal delivery 3 days before closing
+- VOE: Within 10 days of closing
+- HMDA: Data collection at application
+- Adverse Action: Within 30 days if declined
+
+MEXICO COMPLIANCE (Property-Specific):
+- Fideicomiso: Required for foreign ownership in restricted zone
+- Notario Publico: Required for title transfer
+- RFC: Mexican tax ID may be required
+- Apostille: US documents need apostille
+- AML: Enhanced due diligence for foreign buyers
+
+OUTPUT EVENTS:
+- compliance.checked
+- compliance.violation (if requirements not met)
+- trid.application.complete (6-piece trigger)
+
+WORKER AGENTS CALLED:
+- Compliance Timer Agent: Track deadlines
+- Email Agent: Send compliance notifications
+- PDF Generator Agent: Generate disclosures
+
+HUMAN FALLBACK: On violations
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ConfidenceToCompliance</bpmn:incoming>
+      <bpmn:outgoing>Flow_ComplianceToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_VOEAgent" name="Employment/VOE Agent">
+      <bpmn:documentation>
+AGENT: Employment/VOE Agent
+TYPE: Orchestrating (Deterministic)
+TRIGGER: Timer (10 days before closing)
+PREREQUISITES: Closing date set
+
+PURPOSE:
+Order verbal verification of employment (VOE)
+within the required timing window.
+
+TIMING CONSTRAINT:
+VOE must be completed within 10 business days
+of closing per Fannie/Freddie requirements.
+
+ACTIONS:
+1. Calculate appropriate order date
+2. Order VOE through verification service
+3. Track verification status
+4. Receive verification results
+
+OUTPUT EVENTS:
+- thirdparty.voe.ordered
+- thirdparty.voe.received
+
+HUMAN FALLBACK: On verification issues
+
+NOTE: This agent is timer-triggered, not event-triggered.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_TimerToVOE</bpmn:incoming>
+      <bpmn:outgoing>Flow_VOEToConfidence</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- CONFIDENCE CHECK GATEWAY -->
+    <bpmn:exclusiveGateway id="Gateway_ConfidenceCheck" name="Confidence &gt;= 80?">
+      <bpmn:documentation>
+DECISION: Is confidence score ready for underwriting?
+
+THRESHOLD: 80 points (configurable by loan type)
+
+IF YES (>= 80):
+- Emit confidence.threshold.reached
+- Processor conducts final file review
+- Handoff to underwriting
+
+IF NO (&lt; 80):
+- Continue processing
+- Wait for more documents/verifications
+- Check for stalled conditions
+- If stalled > 48 hours, alert processor
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ConfidenceToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConfidenceYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ConfidenceNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:intermediateCatchEvent id="Event_ConfidenceThresholdReached" name="Confidence Threshold Reached">
+      <bpmn:documentation>
+EVENT: confidence.threshold.reached
+
+Confidence score has reached the threshold for
+underwriting handoff (default 80 points).
+
+TRIGGERS: Final File Review by Processor
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ConfidenceYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ThresholdToReview</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_ConfidenceThreshold" messageRef="Message_ConfidenceThreshold" />
+    </bpmn:intermediateCatchEvent>
+
+    <!-- FINAL REVIEW AND END -->
+    <bpmn:userTask id="Task_FinalFileReview" name="Final File Review">
+      <bpmn:documentation>
+TASK: Final File Review
+ACTOR: Loan Processor
+UI: Processing Dashboard - File Review
+
+TRIGGER: confidence.threshold.reached (80+ points)
+
+PURPOSE:
+Human reviews complete file before underwriting handoff.
+This is the quality gate even in agentic processing.
+
+PROCESSOR ACTIONS:
+1. Review confidence score breakdown
+2. Check all conditions status
+3. Review compliance checklist (US + Mexico)
+4. Verify all documents present
+5. Review any processor notes
+6. Approve for underwriting OR request more info
+
+OUTPUT:
+- If approved: Application status → "Ready for Underwriting"
+- If issues: Back to relevant agent/borrower
+
+WORKER AGENTS CALLED:
+- MISMO Export Agent: Export to MISMO format
+- Audit Agent: Log handoff
+
+DURATION: 30 minutes - 1 hour
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ThresholdToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToEnd</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="End_ToUnderwriting" name="To Underwriting">
+      <bpmn:documentation>
+END: Agentic Processing Complete - Continue to Underwriting
+
+SUCCESS STATE:
+- Application status: "Ready for Underwriting"
+- Confidence score: 80+ points
+- All critical conditions addressed
+- US + Mexico compliance verified
+- File packaged in MISMO format
+- Audit trail complete
+
+METRICS:
+- Total processing time: Target 3-7 days
+- Agent execution time per step
+- Human intervention count
+- Documents processed automatically vs manually
+
+NEXT STEPS:
+1. File appears in Underwriting queue (L1-04)
+2. Underwriter assigned
+3. AUS submission (if not done)
+4. Underwriting review begins
+
+HANDOFF: Connects to L1-04-underwriting.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ReviewToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- SEQUENCE FLOWS -->
+    <bpmn:sequenceFlow id="Flow_StartToFork" sourceRef="Event_ApplicationSubmitted" targetRef="Gateway_InitialFork" />
+    <bpmn:sequenceFlow id="Flow_ForkToDocRequest" sourceRef="Gateway_InitialFork" targetRef="Task_DocRequestAgent" />
+    <bpmn:sequenceFlow id="Flow_ForkToTitle" sourceRef="Gateway_InitialFork" targetRef="Task_TitleAgent" />
+    <bpmn:sequenceFlow id="Flow_ForkTo4506C" sourceRef="Gateway_InitialFork" targetRef="Task_4506CAgent" />
+    <bpmn:sequenceFlow id="Flow_ForkToFraud" sourceRef="Gateway_InitialFork" targetRef="Task_FraudDetectionAgent" />
+    <bpmn:sequenceFlow id="Flow_ForkToWaitConsents" sourceRef="Gateway_InitialFork" targetRef="Gateway_WaitConsents" />
+    <bpmn:sequenceFlow id="Flow_DocRequestToUpload" sourceRef="Task_DocRequestAgent" targetRef="Task_UploadDocuments" />
+    <bpmn:sequenceFlow id="Flow_TitleToConfidence" sourceRef="Task_TitleAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_4506CToConfidence" sourceRef="Task_4506CAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_FraudToContinuous" name="Continuous Monitoring" sourceRef="Task_FraudDetectionAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_WaitToCreditAuth" sourceRef="Gateway_WaitConsents" targetRef="Event_CreditAuthReceived" />
+    <bpmn:sequenceFlow id="Flow_WaitToAppraisalAgreement" sourceRef="Gateway_WaitConsents" targetRef="Event_AppraisalAgreementSigned" />
+    <bpmn:sequenceFlow id="Flow_ToSignCreditAuth" sourceRef="Gateway_WaitConsents" targetRef="Task_SignCreditAuth" />
+    <bpmn:sequenceFlow id="Flow_ToSignAppraisalAgreement" sourceRef="Gateway_WaitConsents" targetRef="Task_SignAppraisalAgreement" />
+    <bpmn:sequenceFlow id="Flow_CreditAuthToEvent" sourceRef="Task_SignCreditAuth" targetRef="Event_CreditAuthReceived" />
+    <bpmn:sequenceFlow id="Flow_AppraisalAgreementToEvent" sourceRef="Task_SignAppraisalAgreement" targetRef="Event_AppraisalAgreementSigned" />
+    <bpmn:sequenceFlow id="Flow_CreditAuthToAgent" sourceRef="Event_CreditAuthReceived" targetRef="Task_CreditAgent" />
+    <bpmn:sequenceFlow id="Flow_AppraisalAgreementToAgent" sourceRef="Event_AppraisalAgreementSigned" targetRef="Task_AppraisalAgent" />
+    <bpmn:sequenceFlow id="Flow_PropertyToInsurance" sourceRef="Event_AppraisalAgreementSigned" targetRef="Task_InsuranceAgent" />
+    <bpmn:sequenceFlow id="Flow_CreditToRisk" sourceRef="Task_CreditAgent" targetRef="Task_RiskAgent" />
+    <bpmn:sequenceFlow id="Flow_AppraisalToConfidence" sourceRef="Task_AppraisalAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_InsuranceToConfidence" sourceRef="Task_InsuranceAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_UploadToDocProcessing" sourceRef="Task_UploadDocuments" targetRef="SubProcess_DocumentProcessing" />
+    <bpmn:sequenceFlow id="Flow_DocProcessingToConfidence" sourceRef="SubProcess_DocumentProcessing" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_RiskToConfidence" sourceRef="Task_RiskAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_RiskToCondition" sourceRef="Task_RiskAgent" targetRef="Task_ConditionAgent" />
+    <bpmn:sequenceFlow id="Flow_ConditionToConfidence" sourceRef="Task_ConditionAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_ConfidenceToCompliance" sourceRef="Task_UWConfidenceAgent" targetRef="Task_ComplianceAgent" />
+    <bpmn:sequenceFlow id="Flow_ComplianceToConfidence" sourceRef="Task_ComplianceAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_TimerToVOE" name="10 Days Before Close" sourceRef="Task_ConditionAgent" targetRef="Task_VOEAgent" />
+    <bpmn:sequenceFlow id="Flow_VOEToConfidence" sourceRef="Task_VOEAgent" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_ConfidenceToGateway" sourceRef="Task_UWConfidenceAgent" targetRef="Gateway_ConfidenceCheck" />
+    <bpmn:sequenceFlow id="Flow_ConfidenceYes" name="Yes (>=80)" sourceRef="Gateway_ConfidenceCheck" targetRef="Event_ConfidenceThresholdReached" />
+    <bpmn:sequenceFlow id="Flow_ConfidenceNo" name="No (&lt;80)" sourceRef="Gateway_ConfidenceCheck" targetRef="Task_UWConfidenceAgent" />
+    <bpmn:sequenceFlow id="Flow_ThresholdToReview" sourceRef="Event_ConfidenceThresholdReached" targetRef="Task_FinalFileReview" />
+    <bpmn:sequenceFlow id="Flow_ReviewToEnd" sourceRef="Task_FinalFileReview" targetRef="End_ToUnderwriting" />
+
+    <!-- Human Fallback Flows (from subprocess to human tasks) -->
+    <bpmn:sequenceFlow id="Flow_ClassificationUncertain" name="Classification Uncertain" sourceRef="SubProcess_DocumentProcessing" targetRef="Task_ReviewClassificationUncertain" />
+    <bpmn:sequenceFlow id="Flow_ClassificationReviewed" sourceRef="Task_ReviewClassificationUncertain" targetRef="SubProcess_DocumentProcessing" />
+    <bpmn:sequenceFlow id="Flow_ExtractionUncertain" name="Extraction Uncertain" sourceRef="SubProcess_DocumentProcessing" targetRef="Task_ReviewExtractionUncertain" />
+    <bpmn:sequenceFlow id="Flow_ExtractionReviewed" sourceRef="Task_ReviewExtractionUncertain" targetRef="SubProcess_DocumentProcessing" />
+    <bpmn:sequenceFlow id="Flow_DiscrepancyDetected" name="Discrepancy Found" sourceRef="SubProcess_DocumentProcessing" targetRef="Task_ResolveDiscrepancy" />
+    <bpmn:sequenceFlow id="Flow_DiscrepancyResolved" sourceRef="Task_ResolveDiscrepancy" targetRef="SubProcess_DocumentProcessing" />
+    <bpmn:sequenceFlow id="Flow_FraudAlertToInvestigate" name="Fraud Alert" sourceRef="Task_FraudDetectionAgent" targetRef="Task_InvestigateFraudAlert" />
+    <bpmn:sequenceFlow id="Flow_FraudInvestigated" sourceRef="Task_InvestigateFraudAlert" targetRef="Task_FraudDetectionAgent" />
+  </bpmn:process>
+
+  <!-- MESSAGE DEFINITIONS -->
+  <bpmn:message id="Message_ApplicationSubmitted" name="application.submitted" />
+  <bpmn:message id="Message_CreditAuthReceived" name="consent.credit_authorization.received" />
+  <bpmn:message id="Message_AppraisalAgreementSigned" name="consent.appraisal_agreement.signed" />
+  <bpmn:message id="Message_ConfidenceThreshold" name="confidence.threshold.reached" />
+
+  <!-- BPMN DIAGRAM (Visual Layout) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AgenticProcessingL1">
+    <bpmndi:BPMNPlane id="BPMNPlane_AgenticProcessingL1" bpmnElement="Collaboration_AgenticProcessing">
+      <bpmndi:BPMNShape id="Participant_di" bpmnElement="Participant_AgenticProcessing" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1800" height="800" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Agents (Green) -->
+      <bpmndi:BPMNShape id="Lane_Agents_di" bpmnElement="Lane_Agents" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="190" y="80" width="1770" height="400" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Borrower (Blue) -->
+      <bpmndi:BPMNShape id="Lane_Borrower_di" bpmnElement="Lane_Borrower" isHorizontal="true" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="190" y="480" width="1770" height="160" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Lane: Human Supervision (Orange) -->
+      <bpmndi:BPMNShape id="Lane_HumanSupervision_di" bpmnElement="Lane_HumanSupervision" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="190" y="640" width="1770" height="240" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Start Event (Purple - agentic event) -->
+      <bpmndi:BPMNShape id="Event_ApplicationSubmitted_di" bpmnElement="Event_ApplicationSubmitted" bioc:stroke="#8e24aa" bioc:fill="#e1bee7" color:background-color="#e1bee7" color:border-color="#8e24aa">
+        <dc:Bounds x="242" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="220" y="265" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Initial Fork Gateway -->
+      <bpmndi:BPMNShape id="Gateway_InitialFork_di" bpmnElement="Gateway_InitialFork">
+        <dc:Bounds x="325" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="305" y="185" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Agents with No Prerequisites (Green) -->
+      <bpmndi:BPMNShape id="Task_DocRequestAgent_di" bpmnElement="Task_DocRequestAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="420" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_TitleAgent_di" bpmnElement="Task_TitleAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="420" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_4506CAgent_di" bpmnElement="Task_4506CAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="420" y="300" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_FraudDetectionAgent_di" bpmnElement="Task_FraudDetectionAgent" bioc:stroke="#e53935" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="420" y="400" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Wait Consents Gateway -->
+      <bpmndi:BPMNShape id="Gateway_WaitConsents_di" bpmnElement="Gateway_WaitConsents">
+        <dc:Bounds x="565" y="315" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="545" y="285" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Borrower Consent Tasks (Blue) -->
+      <bpmndi:BPMNShape id="Task_SignCreditAuth_di" bpmnElement="Task_SignCreditAuth" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="540" y="510" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_SignAppraisalAgreement_di" bpmnElement="Task_SignAppraisalAgreement" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="680" y="510" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_UploadDocuments_di" bpmnElement="Task_UploadDocuments" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="540" y="510" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Consent Received Events (Purple) -->
+      <bpmndi:BPMNShape id="Event_CreditAuthReceived_di" bpmnElement="Event_CreditAuthReceived" bioc:stroke="#8e24aa" bioc:fill="#e1bee7" color:background-color="#e1bee7" color:border-color="#8e24aa">
+        <dc:Bounds x="672" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="652" y="265" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Event_AppraisalAgreementSigned_di" bpmnElement="Event_AppraisalAgreementSigned" bioc:stroke="#8e24aa" bioc:fill="#e1bee7" color:background-color="#e1bee7" color:border-color="#8e24aa">
+        <dc:Bounds x="672" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="645" y="365" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Prerequisite-Gated Agents (Green) -->
+      <bpmndi:BPMNShape id="Task_CreditAgent_di" bpmnElement="Task_CreditAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="750" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_AppraisalAgent_di" bpmnElement="Task_AppraisalAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="750" y="300" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_InsuranceAgent_di" bpmnElement="Task_InsuranceAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="750" y="400" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Document Processing Subprocess (Green) -->
+      <bpmndi:BPMNShape id="SubProcess_DocumentProcessing_di" bpmnElement="SubProcess_DocumentProcessing" isExpanded="false" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="900" y="200" width="120" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Human Fallback Tasks (Orange) -->
+      <bpmndi:BPMNShape id="Task_ReviewClassificationUncertain_di" bpmnElement="Task_ReviewClassificationUncertain" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="870" y="680" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_ReviewExtractionUncertain_di" bpmnElement="Task_ReviewExtractionUncertain" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="1000" y="680" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_ResolveDiscrepancy_di" bpmnElement="Task_ResolveDiscrepancy" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="1130" y="680" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_InvestigateFraudAlert_di" bpmnElement="Task_InvestigateFraudAlert" bioc:stroke="#e53935" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="420" y="680" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Decision Support Agents (Green) -->
+      <bpmndi:BPMNShape id="Task_RiskAgent_di" bpmnElement="Task_RiskAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="900" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_UWConfidenceAgent_di" bpmnElement="Task_UWConfidenceAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1100" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_ConditionAgent_di" bpmnElement="Task_ConditionAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1100" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Compliance Agent (Teal - Mexico specific) -->
+      <bpmndi:BPMNShape id="Task_ComplianceAgent_di" bpmnElement="Task_ComplianceAgent" bioc:stroke="#00897b" bioc:fill="#b2dfdb" color:background-color="#b2dfdb" color:border-color="#00897b">
+        <dc:Bounds x="1100" y="300" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_VOEAgent_di" bpmnElement="Task_VOEAgent" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1100" y="400" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Confidence Check Gateway -->
+      <bpmndi:BPMNShape id="Gateway_ConfidenceCheck_di" bpmnElement="Gateway_ConfidenceCheck" isMarkerVisible="true">
+        <dc:Bounds x="1275" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1255" y="185" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Confidence Threshold Event (Purple) -->
+      <bpmndi:BPMNShape id="Event_ConfidenceThresholdReached_di" bpmnElement="Event_ConfidenceThresholdReached" bioc:stroke="#8e24aa" bioc:fill="#e1bee7" color:background-color="#e1bee7" color:border-color="#8e24aa">
+        <dc:Bounds x="1382" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1355" y="265" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Final Review (Orange - Human) -->
+      <bpmndi:BPMNShape id="Task_FinalFileReview_di" bpmnElement="Task_FinalFileReview" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="1550" y="680" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- End Event (Orange) -->
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End_ToUnderwriting" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="1702" y="702" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1682" y="745" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Text Annotations -->
+      <bpmndi:BPMNShape id="Note_AgenticVsTraditional_di" bpmnElement="Note_AgenticVsTraditional">
+        <dc:Bounds x="160" y="920" width="300" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Note_AgentCatalog_di" bpmnElement="Note_AgentCatalog">
+        <dc:Bounds x="500" y="920" width="280" height="280" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Note_HumanFallback_di" bpmnElement="Note_HumanFallback">
+        <dc:Bounds x="820" y="920" width="260" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Note_Compliance_di" bpmnElement="Note_Compliance">
+        <dc:Bounds x="1120" y="920" width="280" height="200" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_StartToFork_di" bpmnElement="Flow_StartToFork">
+        <di:waypoint x="278" y="240" />
+        <di:waypoint x="325" y="240" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ForkToDocRequest_di" bpmnElement="Flow_ForkToDocRequest">
+        <di:waypoint x="350" y="215" />
+        <di:waypoint x="350" y="140" />
+        <di:waypoint x="420" y="140" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ForkToTitle_di" bpmnElement="Flow_ForkToTitle">
+        <di:waypoint x="375" y="240" />
+        <di:waypoint x="420" y="240" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ForkTo4506C_di" bpmnElement="Flow_ForkTo4506C">
+        <di:waypoint x="350" y="265" />
+        <di:waypoint x="350" y="340" />
+        <di:waypoint x="420" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ForkToFraud_di" bpmnElement="Flow_ForkToFraud">
+        <di:waypoint x="350" y="265" />
+        <di:waypoint x="350" y="440" />
+        <di:waypoint x="420" y="440" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ForkToWaitConsents_di" bpmnElement="Flow_ForkToWaitConsents">
+        <di:waypoint x="375" y="240" />
+        <di:waypoint x="478" y="240" />
+        <di:waypoint x="478" y="340" />
+        <di:waypoint x="565" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CreditAuthToAgent_di" bpmnElement="Flow_CreditAuthToAgent">
+        <di:waypoint x="708" y="240" />
+        <di:waypoint x="750" y="240" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_AppraisalAgreementToAgent_di" bpmnElement="Flow_AppraisalAgreementToAgent">
+        <di:waypoint x="708" y="340" />
+        <di:waypoint x="750" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CreditToRisk_di" bpmnElement="Flow_CreditToRisk">
+        <di:waypoint x="850" y="240" />
+        <di:waypoint x="875" y="240" />
+        <di:waypoint x="875" y="140" />
+        <di:waypoint x="900" y="140" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_TitleToConfidence_di" bpmnElement="Flow_TitleToConfidence">
+        <di:waypoint x="520" y="240" />
+        <di:waypoint x="1100" y="240" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_AppraisalToConfidence_di" bpmnElement="Flow_AppraisalToConfidence">
+        <di:waypoint x="850" y="340" />
+        <di:waypoint x="1050" y="340" />
+        <di:waypoint x="1050" y="260" />
+        <di:waypoint x="1100" y="260" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_RiskToConfidence_di" bpmnElement="Flow_RiskToConfidence">
+        <di:waypoint x="1000" y="140" />
+        <di:waypoint x="1050" y="140" />
+        <di:waypoint x="1050" y="220" />
+        <di:waypoint x="1100" y="220" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ConfidenceToGateway_di" bpmnElement="Flow_ConfidenceToGateway">
+        <di:waypoint x="1200" y="240" />
+        <di:waypoint x="1275" y="240" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ConfidenceYes_di" bpmnElement="Flow_ConfidenceYes">
+        <di:waypoint x="1325" y="240" />
+        <di:waypoint x="1382" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1330" y="222" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ConfidenceNo_di" bpmnElement="Flow_ConfidenceNo">
+        <di:waypoint x="1300" y="265" />
+        <di:waypoint x="1300" y="380" />
+        <di:waypoint x="1150" y="380" />
+        <di:waypoint x="1150" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1240" y="360" width="45" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ThresholdToReview_di" bpmnElement="Flow_ThresholdToReview">
+        <di:waypoint x="1418" y="240" />
+        <di:waypoint x="1480" y="240" />
+        <di:waypoint x="1480" y="720" />
+        <di:waypoint x="1550" y="720" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ReviewToEnd_di" bpmnElement="Flow_ReviewToEnd">
+        <di:waypoint x="1650" y="720" />
+        <di:waypoint x="1702" y="720" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_FraudAlertToInvestigate_di" bpmnElement="Flow_FraudAlertToInvestigate">
+        <di:waypoint x="470" y="480" />
+        <di:waypoint x="470" y="680" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="478" y="580" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

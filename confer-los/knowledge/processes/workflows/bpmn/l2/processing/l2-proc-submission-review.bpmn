@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_SubmissionReview" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:collaboration id="Collaboration_Submission">
+    <bpmn:participant id="Participant_Submission" name="Processing - Final Submission (L2)" processRef="Process_Submission_L2" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Submission_L2" name="Submission to Underwriting" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Submission">
+      <bpmn:lane id="Lane_Processor_Sub" name="Loan Processor (Human)">
+        <bpmn:flowNodeRef>Task_CheckPrerequisites</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FinalScrub</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_StackFile</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FixAUS</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Agents_Sub" name="System Agents (Automated)">
+        <bpmn:flowNodeRef>StartEvent_ReadyToSub</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AllCleared</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RunAUS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AUSResult</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyUW</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Submitted</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_ReadyToSub" name="Processing Complete">
+      <bpmn:outgoing>Flow_StartToGate</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:exclusiveGateway id="Gateway_AllCleared" name="All Sub-Processes Cleared?">
+      <bpmn:documentation>Check Income, Asset, Credit, Property status.</bpmn:documentation>
+      <bpmn:incoming>Flow_StartToGate</bpmn:incoming>
+      <bpmn:incoming>Flow_ReworkDone</bpmn:incoming>
+      <bpmn:outgoing>Flow_ClearedYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ClearedNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_CheckPrerequisites" name="Complete Missing Items">
+      <bpmn:documentation>Finish open tasks in other flows.</bpmn:documentation>
+      <bpmn:incoming>Flow_ClearedNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReworkDone</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_FinalScrub" name="Final File Scrub (1008)">
+      <bpmn:documentation>Review Transmittal Summary.</bpmn:documentation>
+      <bpmn:incoming>Flow_ClearedYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScrubToAUS</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_RunAUS" name="Run AUS (DU/LPA)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="run-aus-check" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ScrubToAUS</bpmn:incoming>
+      <bpmn:incoming>Flow_FixToAUS</bpmn:incoming>
+      <bpmn:outgoing>Flow_AUSToGate</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_AUSResult" name="Approve/Eligible?">
+      <bpmn:incoming>Flow_AUSToGate</bpmn:incoming>
+      <bpmn:outgoing>Flow_AUSYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AUSNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_FixAUS" name="Fix AUS Data Errors">
+      <bpmn:documentation>Adjust data to match findings.</bpmn:documentation>
+      <bpmn:incoming>Flow_AUSNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_FixToAUS</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_StackFile" name="Stack File for UW">
+      <bpmn:documentation>Organize eFolder order.</bpmn:documentation>
+      <bpmn:incoming>Flow_AUSYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_StackToNotify</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_NotifyUW" name="Assign Underwriter">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="assign-underwriter" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StackToNotify</bpmn:incoming>
+      <bpmn:outgoing>Flow_NotifyToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Submitted" name="Submitted to UW">
+      <bpmn:incoming>Flow_NotifyToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_StartToGate" sourceRef="StartEvent_ReadyToSub" targetRef="Gateway_AllCleared" />
+    <bpmn:sequenceFlow id="Flow_ClearedNo" name="No" sourceRef="Gateway_AllCleared" targetRef="Task_CheckPrerequisites" />
+    <bpmn:sequenceFlow id="Flow_ReworkDone" sourceRef="Task_CheckPrerequisites" targetRef="Gateway_AllCleared" />
+    <bpmn:sequenceFlow id="Flow_ClearedYes" name="Yes" sourceRef="Gateway_AllCleared" targetRef="Task_FinalScrub" />
+    <bpmn:sequenceFlow id="Flow_ScrubToAUS" sourceRef="Task_FinalScrub" targetRef="Task_RunAUS" />
+    <bpmn:sequenceFlow id="Flow_AUSToGate" sourceRef="Task_RunAUS" targetRef="Gateway_AUSResult" />
+    <bpmn:sequenceFlow id="Flow_AUSNo" name="Refer/Error" sourceRef="Gateway_AUSResult" targetRef="Task_FixAUS" />
+    <bpmn:sequenceFlow id="Flow_FixToAUS" sourceRef="Task_FixAUS" targetRef="Task_RunAUS" />
+    <bpmn:sequenceFlow id="Flow_AUSYes" name="Approved" sourceRef="Gateway_AUSResult" targetRef="Task_StackFile" />
+    <bpmn:sequenceFlow id="Flow_StackToNotify" sourceRef="Task_StackFile" targetRef="Task_NotifyUW" />
+    <bpmn:sequenceFlow id="Flow_NotifyToEnd" sourceRef="Task_NotifyUW" targetRef="EndEvent_Submitted" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Sub">
+    <bpmndi:BPMNPlane id="BPMNPlane_Sub" bpmnElement="Collaboration_Submission">
+      <bpmndi:BPMNShape id="Participant_Sub_di" bpmnElement="Participant_Submission" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1200" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agents_Sub_di" bpmnElement="Lane_Agents_Sub" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="190" y="80" width="1170" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Processor_Sub_di" bpmnElement="Lane_Processor_Sub" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="280" width="1170" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="StartEvent_ReadyToSub">
+        <dc:Bounds x="250" y="160" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_All_di" bpmnElement="Gateway_AllCleared" isMarkerVisible="true">
+        <dc:Bounds x="350" y="153" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pre_di" bpmnElement="Task_CheckPrerequisites">
+        <dc:Bounds x="325" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Scrub_di" bpmnElement="Task_FinalScrub">
+        <dc:Bounds x="480" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AUS_di" bpmnElement="Task_RunAUS">
+        <dc:Bounds x="620" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_AUS_di" bpmnElement="Gateway_AUSResult" isMarkerVisible="true">
+        <dc:Bounds x="780" y="155" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Fix_di" bpmnElement="Task_FixAUS">
+        <dc:Bounds x="755" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Stack_di" bpmnElement="Task_StackFile">
+        <dc:Bounds x="900" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Notify_di" bpmnElement="Task_NotifyUW">
+        <dc:Bounds x="1040" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="EndEvent_Submitted">
+        <dc:Bounds x="1200" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1" bpmnElement="Flow_StartToGate">
+        <di:waypoint x="286" y="178" />
+        <di:waypoint x="350" y="178" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2" bpmnElement="Flow_ClearedNo">
+        <di:waypoint x="375" y="203" />
+        <di:waypoint x="375" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3" bpmnElement="Flow_ReworkDone">
+        <di:waypoint x="425" y="380" />
+        <di:waypoint x="450" y="380" />
+        <di:waypoint x="450" y="120" />
+        <di:waypoint x="375" y="120" />
+        <di:waypoint x="375" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4" bpmnElement="Flow_ClearedYes">
+        <di:waypoint x="400" y="178" />
+        <di:waypoint x="440" y="178" />
+        <di:waypoint x="440" y="380" />
+        <di:waypoint x="480" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5" bpmnElement="Flow_ScrubToAUS">
+        <di:waypoint x="580" y="380" />
+        <di:waypoint x="600" y="380" />
+        <di:waypoint x="600" y="180" />
+        <di:waypoint x="620" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6" bpmnElement="Flow_AUSToGate">
+        <di:waypoint x="720" y="180" />
+        <di:waypoint x="780" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7" bpmnElement="Flow_AUSNo">
+        <di:waypoint x="805" y="205" />
+        <di:waypoint x="805" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8" bpmnElement="Flow_FixToAUS">
+        <di:waypoint x="755" y="380" />
+        <di:waypoint x="700" y="380" />
+        <di:waypoint x="700" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9" bpmnElement="Flow_AUSYes">
+        <di:waypoint x="830" y="180" />
+        <di:waypoint x="860" y="180" />
+        <di:waypoint x="860" y="380" />
+        <di:waypoint x="900" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10" bpmnElement="Flow_StackToNotify">
+        <di:waypoint x="1000" y="380" />
+        <di:waypoint x="1020" y="380" />
+        <di:waypoint x="1020" y="180" />
+        <di:waypoint x="1040" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11" bpmnElement="Flow_NotifyToEnd">
+        <di:waypoint x="1140" y="180" />
+        <di:waypoint x="1200" y="180" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

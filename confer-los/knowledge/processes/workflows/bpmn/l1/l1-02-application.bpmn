@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_ApplicationL1" targetNamespace="https://confersolutions.ai/bpmn/l1/application" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_Application">
+    <bpmn:participant id="Participant_Application" name="Application Process" processRef="Process_Application_L1" />
+    <bpmn:textAnnotation id="Note_L1vsL2">
+      <bpmn:text>L1 vs L2 DISTINCTION
+
+This L1 diagram shows the high-level application flow:
+- ~7 tasks (not 20+)
+- Collapsed subprocess for wizard detail
+- Business language only
+
+For detailed wizard steps (9 URLA sections, parallel
+processing, async services), see L2:
+l2/application/l2-application-wizard.bpmn</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Conversion">
+      <bpmn:text>CONVERSION METRICS
+
+Duration: 15-45 minutes (can pause/resume)
+Conversion from Pre-Qual: ~40%
+Completion rate: ~70% who start
+Submit to Processing: ~28% of all leads
+
+Exit Points:
+- User abandons mid-wizard
+- User saves and returns later
+- User completes and submits</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Evidence">
+      <bpmn:text>GROUNDING DOCUMENTS
+
+- WF-01: Registration (borrower-portal-workflows.md)
+- WF-03: Complete Application (borrower-portal-workflows.md)
+- WF-04: Add Co-Borrower (borrower-portal-workflows.md)
+- WF-05: Co-Borrower Completes (borrower-portal-workflows.md)
+- L2 Detail: l2/application/l2-application-wizard.bpmn
+- Schema: current_schema_architecture.md</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Application_L1" name="Application - L1 Process Overview" isExecutable="false">
+    <bpmn:documentation>
+CONFER LOAN ORIGINATION SYSTEM - L1 APPLICATION PROCESS
+
+PURPOSE: Expand the L0 "Application" phase into high-level business steps
+showing how a borrower completes and submits their mortgage application.
+
+AUDIENCE: Business analysts, process owners, loan officers, clients, executives.
+
+PARENT: L0 Task "Application" (Task_Application)
+CHILD: L2 Application Wizard (l2-application-wizard.bpmn)
+
+KEY CHARACTERISTICS:
+- Authenticated user (account created in Registration WF-01)
+- Collects full URLA 1003 data via 9-step wizard
+- Supports co-borrower invitation and parallel completion
+- Auto-saves progress for pause/resume
+- Submits to Processing phase upon completion
+
+L1 SIMPLIFICATION:
+This diagram shows ~7 tasks vs the ~20+ in L2 because:
+- Wizard steps are collapsed into a single subprocess
+- Backend async services are hidden
+- Email notifications are abstracted away
+- Focus is on business milestones, not implementation
+
+DOWNSTREAM: Leads to Processing (L1-03)
+
+SPEC REFERENCES:
+- WF-01: Registration
+- WF-03: Complete Application
+- WF-04: Add Co-Borrower
+- WF-05: Co-Borrower Completes
+
+AGENTIC ARCHITECTURE - WORKER AGENTS USED:
+This phase uses the following Worker Agents (see Task 059b):
+- Email Agent: Welcome emails, co-borrower invitations, confirmation emails, document requests
+- SMS Agent: Welcome SMS, status notifications (opt-in only)
+- Notification Agent: In-app updates for application progress, co-borrower status
+- Account Agent: Create/manage user accounts during registration
+- Audit Agent: Log all actions for compliance (data entry, consent capture, submissions)
+
+For Worker Agent specifications: tasks/059b_worker_agent_catalog.md
+For Orchestrating Agents (Processing phase): tasks/059a_bpmn_l1_processing_agentic.md
+    </bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Application">
+      <bpmn:lane id="Lane_Borrower" name="Borrower (Authenticated)">
+        <bpmn:documentation>
+ACTOR: Primary Borrower
+
+An authenticated user who has completed registration (WF-01).
+Now completing the full mortgage application.
+
+CHARACTERISTICS:
+- Has account with email/password
+- May have pre-qualification data pre-filled
+- Can invite co-borrower to complete their section
+- Can save progress and return later
+
+UI: Borrower Portal - Application Wizard
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Start_FromRegistration</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SubProcess_ApplicationWizard</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_CoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_InviteCoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_WaitForCoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_MergePaths</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewAndSubmit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ToProcessing</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="System (MoXi Platform)">
+        <bpmn:documentation>
+SYSTEM: MoXi Platform
+
+Automated system actions supporting the application process.
+
+RESPONSIBILITIES:
+- Validate application data
+- Process co-borrower invitations
+- Send notifications
+- Update application status
+- Hand off to Processing
+
+NOTE: At L1, system actions are minimal.
+Detailed backend services (credit pull, AUS, etc.)
+are shown in L2 diagrams.
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_SubmitApplication</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_FromRegistration" name="From Registration">
+      <bpmn:documentation>
+TRIGGER: User completes registration (WF-01) and begins application
+
+ENTRY POINTS:
+- Direct continuation from registration
+- Login and resume saved application
+- Deep link from email
+
+USER STATE:
+- Authenticated with valid session
+- May have pre-qual data pre-filled
+- Application status: "draft"
+
+SPEC: WF-01 completion leads here
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_StartToWizard</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:callActivity id="SubProcess_ApplicationWizard" name="Complete Application Wizard" calledElement="Process_ApplicationWizard_L2">
+      <bpmn:documentation>
+SUBPROCESS: Complete Application Wizard (COLLAPSED)
+
+This collapsed subprocess contains the full 9-step URLA 1003 wizard.
+It is shown as a single box at L1 to keep the diagram simple.
+
+WHAT'S INSIDE (see L2 for detail):
+1. Loan &amp; Property Information
+2. Borrower Information (Personal)
+3. Residence History
+4. Employment &amp; Income
+5. Assets
+6. Liabilities
+7. Real Estate Owned
+8. Declarations (Sections 5a/5b)
+9. Review &amp; Submit
+
+KEY BEHAVIORS:
+- Auto-save on every field change
+- Can navigate freely between steps
+- Validation on each step
+- Progress indicator shows completion
+
+DURATION: 15-45 minutes (can pause and resume)
+
+L2 DIAGRAM: l2/application/l2-application-wizard.bpmn
+
+SPEC: WF-03 Steps 1-24
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_StartToWizard</bpmn:incoming>
+      <bpmn:outgoing>Flow_WizardToCoBorrower</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:exclusiveGateway id="Gateway_CoBorrower" name="Add Co-Borrower?">
+      <bpmn:documentation>
+DECISION: Does the borrower want to add a co-borrower?
+
+This decision can be made:
+- During the wizard (Step 2)
+- At the review screen before submit
+
+OPTIONS:
+- YES: Invite co-borrower to complete their section
+- NO: Continue to review and submit solo
+
+BUSINESS CONTEXT:
+Co-borrowers are common for:
+- Married couples
+- Domestic partners
+- Parent helping child qualify
+
+SPEC: WF-04 trigger
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_WizardToCoBorrower</bpmn:incoming>
+      <bpmn:outgoing>Flow_YesCoBorrower</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NoCoBorrower</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_InviteCoBorrower" name="Invite Co-Borrower">
+      <bpmn:documentation>
+TASK: Invite Co-Borrower
+ACTOR: Primary Borrower
+UI: Co-Borrower Invitation Modal
+
+USER ACTION:
+Enter co-borrower details and send invitation
+
+FORM FIELDS:
+- Co-borrower email address
+- Co-borrower first name
+- Co-borrower last name
+- Relationship (spouse, partner, other)
+
+WHAT HAPPENS:
+1. System creates invitation record
+2. Email sent to co-borrower with secure link
+3. Primary can continue or wait
+
+NOTE: Primary can submit without waiting for co-borrower.
+Co-borrower data can be added later (subject to processor review).
+
+L2 DETAIL: l2-app-co-borrower-invite.bpmn
+
+SPEC: WF-04
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_YesCoBorrower</bpmn:incoming>
+      <bpmn:outgoing>Flow_InviteToWait</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:receiveTask id="Task_WaitForCoBorrower" name="Wait for Co-Borrower">
+      <bpmn:documentation>
+TASK: Wait for Co-Borrower to Complete
+ACTOR: Primary Borrower (waiting) + Co-Borrower (acting)
+
+WHAT HAPPENS:
+1. Co-borrower receives invitation email
+2. Co-borrower clicks link and creates account (or logs in)
+3. Co-borrower completes their sections (Steps 2, 3, 4, 8)
+4. System notifies primary when co-borrower completes
+
+PRIMARY OPTIONS WHILE WAITING:
+- Continue editing their own sections
+- Check co-borrower status
+- Resend invitation if needed
+- Cancel invitation and proceed solo
+
+TIMEOUT HANDLING:
+- Reminder emails at 24h, 48h, 7 days
+- Primary can proceed without co-borrower after any time
+
+L2 DETAIL: l2-app-co-borrower-complete.bpmn
+
+SPEC: WF-05
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_InviteToWait</bpmn:incoming>
+      <bpmn:outgoing>Flow_WaitToMerge</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:exclusiveGateway id="Gateway_MergePaths" name="">
+      <bpmn:documentation>
+MERGE: Paths rejoin after co-borrower decision
+
+Both paths (with or without co-borrower) continue to review.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_WaitToMerge</bpmn:incoming>
+      <bpmn:incoming>Flow_NoCoBorrower</bpmn:incoming>
+      <bpmn:outgoing>Flow_MergeToReview</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ReviewAndSubmit" name="Review &#38; Submit Application">
+      <bpmn:documentation>
+TASK: Review and Submit Application
+ACTOR: Primary Borrower
+UI: Application Review Screen (Wizard Step 9)
+
+USER ACTION:
+Review all entered data and submit the application
+
+DISPLAY:
+- All sections in read-only summary view
+- Validation status for each section
+- Missing/invalid items highlighted
+- Co-borrower section (if applicable)
+
+USER MUST:
+1. Review all information for accuracy
+2. Check attestation checkbox
+3. Click "Submit Application" button
+
+VALIDATION:
+- All required fields complete
+- All sections marked valid
+- Attestation checkbox checked
+
+SPEC: WF-03 Steps 25-28
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_MergeToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToSubmit</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_SubmitApplication" name="Process Submission">
+      <bpmn:documentation>
+TASK: Process Application Submission
+SYSTEM: MoXi Platform
+
+WHAT HAPPENS (abstracted at L1):
+1. Validate all application data
+2. Update application status to "submitted"
+3. Create application_event record
+4. Generate initial document checklist
+5. Assign to loan officer
+6. Send confirmation email to borrower
+7. Notify loan officer of new application
+
+POST-SUBMIT:
+- Application moves to Processing queue
+- Borrower sees confirmation with next steps
+- Loan officer receives notification
+
+L2 DETAIL: See l2-application-wizard.bpmn for
+parallel processing and async service calls.
+
+SPEC: WF-03 Steps 29-33
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ReviewToSubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_ToProcessing" name="To Processing">
+      <bpmn:documentation>
+END: Application Submitted - Continue to Processing
+
+SUCCESS STATE:
+- Application status: "submitted"
+- Application ID assigned
+- Loan officer notified
+- Borrower received confirmation email
+
+NEXT STEPS:
+1. Application appears in Processing queue (L1-03)
+2. Processor reviews for completeness
+3. Document checklist sent to borrower
+4. Third-party services ordered
+
+HANDOFF:
+This end event connects to L1-03-processing.bpmn
+
+SPEC: End of WF-03, beginning of Processing phase
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_SubmitToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToWizard" sourceRef="Start_FromRegistration" targetRef="SubProcess_ApplicationWizard" />
+    <bpmn:sequenceFlow id="Flow_WizardToCoBorrower" sourceRef="SubProcess_ApplicationWizard" targetRef="Gateway_CoBorrower" />
+    <bpmn:sequenceFlow id="Flow_YesCoBorrower" name="Yes" sourceRef="Gateway_CoBorrower" targetRef="Task_InviteCoBorrower" />
+    <bpmn:sequenceFlow id="Flow_NoCoBorrower" name="No" sourceRef="Gateway_CoBorrower" targetRef="Gateway_MergePaths" />
+    <bpmn:sequenceFlow id="Flow_InviteToWait" sourceRef="Task_InviteCoBorrower" targetRef="Task_WaitForCoBorrower" />
+    <bpmn:sequenceFlow id="Flow_WaitToMerge" sourceRef="Task_WaitForCoBorrower" targetRef="Gateway_MergePaths" />
+    <bpmn:sequenceFlow id="Flow_MergeToReview" sourceRef="Gateway_MergePaths" targetRef="Task_ReviewAndSubmit" />
+    <bpmn:sequenceFlow id="Flow_ReviewToSubmit" sourceRef="Task_ReviewAndSubmit" targetRef="Task_SubmitApplication" />
+    <bpmn:sequenceFlow id="Flow_SubmitToEnd" sourceRef="Task_SubmitApplication" targetRef="End_ToProcessing" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ApplicationL1">
+    <bpmndi:BPMNPlane id="BPMNPlane_ApplicationL1" bpmnElement="Collaboration_Application">
+      <bpmndi:BPMNShape id="Participant_di" bpmnElement="Participant_Application" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1100" height="400" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="190" y="360" width="1070" height="120" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Borrower_di" bpmnElement="Lane_Borrower" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1070" height="280" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_FromRegistration" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="242" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="218" y="235" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_di" bpmnElement="SubProcess_ApplicationWizard" isExpanded="false" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="330" y="170" width="120" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CoBorrower_di" bpmnElement="Gateway_CoBorrower" isMarkerVisible="true">
+        <dc:Bounds x="495" y="185" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="477" y="156" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InviteCoBorrower_di" bpmnElement="Task_InviteCoBorrower" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="590" y="120" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_WaitForCoBorrower_di" bpmnElement="Task_WaitForCoBorrower" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="740" y="120" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_MergePaths_di" bpmnElement="Gateway_MergePaths" isMarkerVisible="true">
+        <dc:Bounds x="875" y="185" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewAndSubmit_di" bpmnElement="Task_ReviewAndSubmit" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="970" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitApplication_di" bpmnElement="Task_SubmitApplication" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="970" y="390" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End_ToProcessing" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1162" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1145" y="235" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToWizard_di" bpmnElement="Flow_StartToWizard">
+        <di:waypoint x="278" y="210" />
+        <di:waypoint x="330" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_WizardToCoBorrower_di" bpmnElement="Flow_WizardToCoBorrower">
+        <di:waypoint x="450" y="210" />
+        <di:waypoint x="495" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_YesCoBorrower_di" bpmnElement="Flow_YesCoBorrower">
+        <di:waypoint x="520" y="185" />
+        <di:waypoint x="520" y="160" />
+        <di:waypoint x="590" y="160" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="543" y="143" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NoCoBorrower_di" bpmnElement="Flow_NoCoBorrower">
+        <di:waypoint x="520" y="235" />
+        <di:waypoint x="520" y="290" />
+        <di:waypoint x="900" y="290" />
+        <di:waypoint x="900" y="235" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="543" y="273" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InviteToWait_di" bpmnElement="Flow_InviteToWait">
+        <di:waypoint x="690" y="160" />
+        <di:waypoint x="740" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_WaitToMerge_di" bpmnElement="Flow_WaitToMerge">
+        <di:waypoint x="840" y="160" />
+        <di:waypoint x="900" y="160" />
+        <di:waypoint x="900" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_MergeToReview_di" bpmnElement="Flow_MergeToReview">
+        <di:waypoint x="925" y="210" />
+        <di:waypoint x="970" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToSubmit_di" bpmnElement="Flow_ReviewToSubmit">
+        <di:waypoint x="1020" y="250" />
+        <di:waypoint x="1020" y="390" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitToEnd_di" bpmnElement="Flow_SubmitToEnd">
+        <di:waypoint x="1070" y="430" />
+        <di:waypoint x="1180" y="430" />
+        <di:waypoint x="1180" y="228" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Note_L1vsL2_di" bpmnElement="Note_L1vsL2">
+        <dc:Bounds x="160" y="520" width="320" height="140" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Conversion_di" bpmnElement="Note_Conversion">
+        <dc:Bounds x="520" y="520" width="260" height="150" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Evidence_di" bpmnElement="Note_Evidence">
+        <dc:Bounds x="820" y="520" width="280" height="150" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

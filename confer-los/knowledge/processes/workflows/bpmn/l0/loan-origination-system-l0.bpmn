@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_LoanOriginationL0" targetNamespace="https://confersolutions.ai/bpmn/l0" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_LoanOrigination">
+    <bpmn:participant id="Participant_LoanOrigination" name="Mortgage Loan Origination Lifecycle" processRef="Process_LoanOrigination_L0" />
+    <bpmn:group id="Group_CustomerFacing" categoryValueRef="CategoryValue_CustomerFacing" />
+    <bpmn:group id="Group_BackOffice" categoryValueRef="CategoryValue_BackOffice" />
+    <bpmn:textAnnotation id="Note_Role_PreQual">
+      <bpmn:text>ROLE: Borrower (self-service)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Role1" sourceRef="Task_PreQualification" targetRef="Note_Role_PreQual" />
+    <bpmn:textAnnotation id="Note_Role_Processing">
+      <bpmn:text>ROLE: Loan Processor</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Role_Underwriting">
+      <bpmn:text>ROLE: Underwriter + AI Agent</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Role_Closing">
+      <bpmn:text>ROLE: Closer + Title Agent</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Role_Funding">
+      <bpmn:text>ROLE: Funder (automated)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_Processing">
+      <bpmn:text>SYSTEM: Internal LOS
+Processing Dashboard</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_Underwriting">
+      <bpmn:text>SYSTEM: Internal LOS
+UW Dashboard + AUS</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_Closing">
+      <bpmn:text>SYSTEM: Internal LOS
+Closing Dashboard</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_Funding">
+      <bpmn:text>SYSTEM: Internal LOS
+Funding Queue + Wire</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration3">
+      <bpmn:text>5-15 days</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration4">
+      <bpmn:text>3-7 days</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration5">
+      <bpmn:text>3-5 days</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration6">
+      <bpmn:text>Same day</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Role3" sourceRef="Task_Processing" targetRef="Note_Role_Processing" />
+    <bpmn:association id="Assoc_Role4" sourceRef="Task_Underwriting" targetRef="Note_Role_Underwriting" />
+    <bpmn:association id="Assoc_Role5" sourceRef="Task_Closing" targetRef="Note_Role_Closing" />
+    <bpmn:association id="Assoc_Role6" sourceRef="Task_Funding" targetRef="Note_Role_Funding" />
+    <bpmn:association id="Assoc_System3" sourceRef="Task_Processing" targetRef="Note_System_Processing" />
+    <bpmn:association id="Assoc_System4" sourceRef="Task_Underwriting" targetRef="Note_System_Underwriting" />
+    <bpmn:association id="Assoc_System5" sourceRef="Task_Closing" targetRef="Note_System_Closing" />
+    <bpmn:association id="Assoc_System6" sourceRef="Task_Funding" targetRef="Note_System_Funding" />
+    <bpmn:association id="Assoc_Dur3" sourceRef="Task_Processing" targetRef="Note_Duration3" />
+    <bpmn:association id="Assoc_Dur4" sourceRef="Task_Underwriting" targetRef="Note_Duration4" />
+    <bpmn:association id="Assoc_Dur5" sourceRef="Task_Closing" targetRef="Note_Duration5" />
+    <bpmn:association id="Assoc_Dur6" sourceRef="Task_Funding" targetRef="Note_Duration6" />
+    <bpmn:textAnnotation id="Note_Legend">
+      <bpmn:text>TASK TYPE LEGEND
+[Person icon] = Customer action
+[Hand icon] = Staff manual task
+[Gear icon] = Automated/System</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Timeline">
+      <bpmn:text>TIMELINE (Purchase)
+Pre-Qual: Day 1
+Application: Day 1-3
+Processing: Day 3-18
+Underwriting: Day 18-25
+Closing: Day 25-30
+Funding: Day 30
+
+Total: 30-45 days</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:category id="Category_CustomerFacing">
+    <bpmn:categoryValue id="CategoryValue_CustomerFacing" value="CUSTOMER-FACING PHASES (Borrower Portal)" />
+  </bpmn:category>
+  <bpmn:category id="Category_BackOffice">
+    <bpmn:categoryValue id="CategoryValue_BackOffice" value="BACK-OFFICE PHASES (Internal LOS Portal)" />
+  </bpmn:category>
+  <bpmn:process id="Process_LoanOrigination_L0" name="Loan Origination System - L0 Executive Overview" isExecutable="false">
+    <bpmn:documentation>
+CONFER LOAN ORIGINATION SYSTEM - L0 EXECUTIVE OVERVIEW
+
+PURPOSE: High-level view of the complete mortgage loan origination lifecycle.
+
+AUDIENCE: Executives, clients, stakeholders, UI/UX designers, training.
+
+TIMELINE: 30-60 days from application to funding.
+
+SUCCESS RATE: ~75% of submitted applications fund.
+
+For detailed breakdowns, see L1 diagrams in /docs/workflows/bpmn/l1/
+    </bpmn:documentation>
+    <bpmn:startEvent id="Start_CustomerInterested" name="Customer Interested">
+      <bpmn:documentation>
+TRIGGER: Customer begins their home buying or refinance journey.
+
+ENTRY POINTS:
+- Website visit (organic or paid traffic)
+- Referral from real estate agent
+- Referral from existing customer
+- Walk-in to branch location
+- Phone inquiry
+
+CUSTOMER MINDSET: "I want to buy a home" or "I want to refinance"
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_PreQualification" name="Pre-Qualification">
+      <bpmn:documentation>
+PHASE 1: PRE-QUALIFICATION
+Duration: 5-10 minutes
+
+PURPOSE: Quick, no-commitment assessment of loan eligibility and estimated rates.
+
+WHAT HAPPENS:
+- Customer provides basic financial info
+- System calculates estimated loan amount and rate
+- No hard credit inquiry required
+- Customer sees personalized rate options
+
+CONVERSION: ~40% proceed to full application
+
+UI: Public website / Borrower Portal landing
+L1 DIAGRAM: inquiry-l1.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_01</bpmn:incoming>
+      <bpmn:outgoing>Flow_02</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Application" name="Application">
+      <bpmn:documentation>
+PHASE 2: APPLICATION
+Duration: 15-45 minutes (can pause and resume)
+
+PURPOSE: Collect complete borrower information per URLA Form 1003.
+
+WHAT HAPPENS:
+- Customer creates account or logs in
+- Completes multi-step application wizard
+- Can invite co-borrower to complete their section
+- Application submitted for processing
+
+CONVERSION: ~70% who start complete submission
+
+UI: Borrower Portal - Application Wizard
+L1 DIAGRAM: application-l1.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_02</bpmn:incoming>
+      <bpmn:outgoing>Flow_03</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="Start_CustomerInterested" targetRef="Task_PreQualification" />
+    <bpmn:sequenceFlow id="Flow_02" name="40% proceed" sourceRef="Task_PreQualification" targetRef="Task_Application" />
+    <bpmn:sequenceFlow id="Flow_03" name="70% submit" sourceRef="Task_Application" targetRef="Task_Processing" />
+    <bpmn:manualTask id="Task_Processing" name="Processing">
+      <bpmn:documentation>
+PHASE 3: PROCESSING
+Duration: 5-15 business days
+
+PURPOSE: Collect, verify, and organize all documentation for underwriting.
+
+WHAT HAPPENS:
+- Processor reviews application for completeness
+- Document checklist sent to borrower
+- Borrower uploads required documents
+- Third-party services ordered
+- Documents verified against application
+- Complete file packaged for underwriting
+
+BOTTLENECK: Usually borrower document delays or appraisal scheduling
+
+UI: Internal Portal - Processing Dashboard
+L1 DIAGRAM: processing-l1.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_03</bpmn:incoming>
+      <bpmn:outgoing>Flow_04</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:manualTask id="Task_Underwriting" name="Underwriting">
+      <bpmn:documentation>
+PHASE 4: UNDERWRITING
+Duration: 3-7 business days
+
+PURPOSE: Comprehensive risk assessment to determine loan approval.
+
+WHAT HAPPENS:
+- Underwriter reviews complete loan file
+- Automated Underwriting System (AUS) run
+- Manual review of risk factors
+- Compliance with guidelines verified
+- Decision rendered: Approve, Suspend, or Deny
+- Conditions issued if applicable
+
+APPROVAL RATE: ~80% of submitted applications
+
+UI: Internal Portal - Underwriting Dashboard
+L1 DIAGRAM: underwriting-l1.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_04</bpmn:incoming>
+      <bpmn:outgoing>Flow_05</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:exclusiveGateway id="Gateway_Decision" name="Approved?">
+      <bpmn:documentation>
+DECISION POINT: UNDERWRITING OUTCOME
+
+APPROVED PATH (~75-80%):
+- All conditions satisfied
+- Loan proceeds to Closing
+- Customer notified of approval
+
+DENIED PATH (~15-20%):
+- Does not meet guidelines
+- Adverse Action Notice sent
+- Reasons for denial provided (ECOA requirement)
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_05</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Denied</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:manualTask id="Task_Closing" name="Closing">
+      <bpmn:documentation>
+PHASE 5: CLOSING
+Duration: 3-5 business days
+
+PURPOSE: Finalize the loan by preparing and executing all legal documents.
+
+WHAT HAPPENS:
+- Clear to Close (CTC) issued
+- Final Closing Disclosure prepared
+- 3-day waiting period (TRID requirement)
+- Closing appointment scheduled
+- Borrower signs all documents
+- Funds wired to escrow
+
+SIGNING TIME: 30-60 minutes
+
+UI: Internal Portal - Closing Dashboard
+L1 DIAGRAM: closing-l1.bpmn
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Approved</bpmn:incoming>
+      <bpmn:outgoing>Flow_06</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:serviceTask id="Task_Funding" name="Funding">
+      <bpmn:documentation>
+PHASE 6: FUNDING
+Duration: Same day to 3 business days
+
+PURPOSE: Disburse loan funds and record the mortgage.
+
+WHAT HAPPENS:
+- Signed documents reviewed
+- Lender wires funds to title company
+- Title company disburses to all parties
+- Mortgage recorded with county
+- Keys delivered (purchases)
+
+UI: Internal Portal - Funding Queue
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_06</bpmn:incoming>
+      <bpmn:outgoing>Flow_07</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_LoanFunded" name="Loan Funded">
+      <bpmn:documentation>
+SUCCESS: LOAN FUNDED
+
+The loan has been successfully funded!
+
+FOR CUSTOMER:
+- Purchase: They own their new home
+- Refinance: New mortgage with better terms
+
+FOR LENDER:
+- Revenue recognized
+- Loan added to portfolio or sold
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_07</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_LoanDenied" name="Loan Denied">
+      <bpmn:documentation>
+OUTCOME: LOAN DENIED
+
+REGULATORY REQUIREMENTS:
+- Adverse Action Notice within 30 days
+- Specific denial reasons disclosed
+- Right to free credit report
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_Denied</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_04" name="File complete" sourceRef="Task_Processing" targetRef="Task_Underwriting" />
+    <bpmn:sequenceFlow id="Flow_05" sourceRef="Task_Underwriting" targetRef="Gateway_Decision" />
+    <bpmn:sequenceFlow id="Flow_Approved" name="Approved (75-80%)" sourceRef="Gateway_Decision" targetRef="Task_Closing" />
+    <bpmn:sequenceFlow id="Flow_Denied" name="Denied (15-20%)" sourceRef="Gateway_Decision" targetRef="End_LoanDenied" />
+    <bpmn:sequenceFlow id="Flow_06" name="Docs signed" sourceRef="Task_Closing" targetRef="Task_Funding" />
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Task_Funding" targetRef="End_LoanFunded" />
+    <bpmn:textAnnotation id="Note_Role_Application">
+      <bpmn:text>ROLE: Borrower + Co-Borrower</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_PreQual">
+      <bpmn:text>SYSTEM: Borrower Portal
+Public website</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_System_Application">
+      <bpmn:text>SYSTEM: Borrower Portal
+Application Wizard</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration1">
+      <bpmn:text>5-10 min</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Duration2">
+      <bpmn:text>15-45 min</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Funnel">
+      <bpmn:text>CONVERSION FUNNEL
+100% Pre-Qualified
+40% Start Application
+28% Submit Application
+22% Approved
+20% Funded</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Role2" sourceRef="Task_Application" targetRef="Note_Role_Application" />
+    <bpmn:association id="Assoc_System1" sourceRef="Task_PreQualification" targetRef="Note_System_PreQual" />
+    <bpmn:association id="Assoc_System2" sourceRef="Task_Application" targetRef="Note_System_Application" />
+    <bpmn:association id="Assoc_Dur1" sourceRef="Task_PreQualification" targetRef="Note_Duration1" />
+    <bpmn:association id="Assoc_Dur2" sourceRef="Task_Application" targetRef="Note_Duration2" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_L0">
+    <bpmndi:BPMNPlane id="BPMNPlane_L0" bpmnElement="Collaboration_LoanOrigination">
+      <bpmndi:BPMNShape id="Participant_di" bpmnElement="Participant_LoanOrigination" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1400" height="480" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_CustomerInterested">
+        <dc:Bounds x="252" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="230" y="375" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task1_di" bpmnElement="Task_PreQualification" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="340" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task2_di" bpmnElement="Task_Application" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="490" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task3_di" bpmnElement="Task_Processing" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="734" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task4_di" bpmnElement="Task_Underwriting" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="884" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_di" bpmnElement="Gateway_Decision" isMarkerVisible="true">
+        <dc:Bounds x="1039" y="325" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1037" y="382" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task5_di" bpmnElement="Task_Closing" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="1144" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task6_di" bpmnElement="Task_Funding" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1294" y="310" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndFunded_di" bpmnElement="End_LoanFunded" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1446" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1432" y="375" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndDenied_di" bpmnElement="End_LoanDenied" bioc:stroke="#e53935" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="1046" y="472" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1033" y="515" width="63" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole2_di" bpmnElement="Note_Role_Application">
+        <dc:Bounds x="460" y="220" width="160" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem1_di" bpmnElement="Note_System_PreQual">
+        <dc:Bounds x="315" y="410" width="150" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem2_di" bpmnElement="Note_System_Application">
+        <dc:Bounds x="460" y="410" width="160" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur1_di" bpmnElement="Note_Duration1">
+        <dc:Bounds x="350" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur2_di" bpmnElement="Note_Duration2">
+        <dc:Bounds x="500" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteFunnel_di" bpmnElement="Note_Funnel">
+        <dc:Bounds x="250" y="590" width="160" height="100" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow01_di" bpmnElement="Flow_01">
+        <di:waypoint x="288" y="350" />
+        <di:waypoint x="340" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow02_di" bpmnElement="Flow_02">
+        <di:waypoint x="440" y="350" />
+        <di:waypoint x="490" y="350" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="435" y="293" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow03_di" bpmnElement="Flow_03">
+        <di:waypoint x="590" y="350" />
+        <di:waypoint x="734" y="350" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="623" y="293" width="58" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow04_di" bpmnElement="Flow_04">
+        <di:waypoint x="834" y="350" />
+        <di:waypoint x="884" y="350" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="828" y="293" width="66" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow05_di" bpmnElement="Flow_05">
+        <di:waypoint x="984" y="350" />
+        <di:waypoint x="1039" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="FlowApproved_di" bpmnElement="Flow_Approved" bioc:stroke="#43a047" color:border-color="#43a047">
+        <di:waypoint x="1089" y="350" />
+        <di:waypoint x="1144" y="350" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1082" y="293" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="FlowDenied_di" bpmnElement="Flow_Denied" bioc:stroke="#e53935" color:border-color="#e53935">
+        <di:waypoint x="1064" y="375" />
+        <di:waypoint x="1064" y="472" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1008" y="423" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow06_di" bpmnElement="Flow_06">
+        <di:waypoint x="1244" y="350" />
+        <di:waypoint x="1294" y="350" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1239" y="293" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow07_di" bpmnElement="Flow_07" bioc:stroke="#43a047" color:border-color="#43a047">
+        <di:waypoint x="1394" y="350" />
+        <di:waypoint x="1446" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocRole2_di" bpmnElement="Assoc_Role2">
+        <di:waypoint x="540" y="310" />
+        <di:waypoint x="540" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem1_di" bpmnElement="Assoc_System1">
+        <di:waypoint x="390" y="390" />
+        <di:waypoint x="390" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem2_di" bpmnElement="Assoc_System2">
+        <di:waypoint x="540" y="390" />
+        <di:waypoint x="540" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur1_di" bpmnElement="Assoc_Dur1">
+        <di:waypoint x="390" y="310" />
+        <di:waypoint x="390" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur2_di" bpmnElement="Assoc_Dur2">
+        <di:waypoint x="540" y="310" />
+        <di:waypoint x="540" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Group_CustomerFacing_di" bpmnElement="Group_CustomerFacing">
+        <dc:Bounds x="230" y="110" width="390" height="430" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="381" y="117" width="89" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Group_BackOffice_di" bpmnElement="Group_BackOffice">
+        <dc:Bounds x="694" y="110" width="816" height="430" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1058" y="117" width="89" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole1_di" bpmnElement="Note_Role_PreQual">
+        <dc:Bounds x="315" y="210" width="150" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole3_di" bpmnElement="Note_Role_Processing">
+        <dc:Bounds x="709" y="220" width="150" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole4_di" bpmnElement="Note_Role_Underwriting">
+        <dc:Bounds x="854" y="220" width="160" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole5_di" bpmnElement="Note_Role_Closing">
+        <dc:Bounds x="1119" y="220" width="150" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteRole6_di" bpmnElement="Note_Role_Funding">
+        <dc:Bounds x="1269" y="220" width="150" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem3_di" bpmnElement="Note_System_Processing">
+        <dc:Bounds x="709" y="410" width="150" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem4_di" bpmnElement="Note_System_Underwriting">
+        <dc:Bounds x="854" y="410" width="160" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem5_di" bpmnElement="Note_System_Closing">
+        <dc:Bounds x="1119" y="410" width="150" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteSystem6_di" bpmnElement="Note_System_Funding">
+        <dc:Bounds x="1269" y="410" width="150" height="40" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur3_di" bpmnElement="Note_Duration3">
+        <dc:Bounds x="744" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur4_di" bpmnElement="Note_Duration4">
+        <dc:Bounds x="894" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur5_di" bpmnElement="Note_Duration5">
+        <dc:Bounds x="1154" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteDur6_di" bpmnElement="Note_Duration6">
+        <dc:Bounds x="1304" y="265" width="80" height="20" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteLegend_di" bpmnElement="Note_Legend">
+        <dc:Bounds x="1030" y="600" width="180" height="70" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="NoteTimeline_di" bpmnElement="Note_Timeline">
+        <dc:Bounds x="620" y="590" width="170" height="130" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="AssocRole1_di" bpmnElement="Assoc_Role1">
+        <di:waypoint x="390" y="310" />
+        <di:waypoint x="390" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocRole3_di" bpmnElement="Assoc_Role3">
+        <di:waypoint x="784" y="310" />
+        <di:waypoint x="784" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocRole4_di" bpmnElement="Assoc_Role4">
+        <di:waypoint x="934" y="310" />
+        <di:waypoint x="934" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocRole5_di" bpmnElement="Assoc_Role5">
+        <di:waypoint x="1194" y="310" />
+        <di:waypoint x="1194" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocRole6_di" bpmnElement="Assoc_Role6">
+        <di:waypoint x="1344" y="310" />
+        <di:waypoint x="1344" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem3_di" bpmnElement="Assoc_System3">
+        <di:waypoint x="784" y="390" />
+        <di:waypoint x="784" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem4_di" bpmnElement="Assoc_System4">
+        <di:waypoint x="934" y="390" />
+        <di:waypoint x="934" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem5_di" bpmnElement="Assoc_System5">
+        <di:waypoint x="1194" y="390" />
+        <di:waypoint x="1194" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocSystem6_di" bpmnElement="Assoc_System6">
+        <di:waypoint x="1344" y="390" />
+        <di:waypoint x="1344" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur3_di" bpmnElement="Assoc_Dur3">
+        <di:waypoint x="784" y="310" />
+        <di:waypoint x="784" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur4_di" bpmnElement="Assoc_Dur4">
+        <di:waypoint x="934" y="310" />
+        <di:waypoint x="934" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur5_di" bpmnElement="Assoc_Dur5">
+        <di:waypoint x="1194" y="310" />
+        <di:waypoint x="1194" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocDur6_di" bpmnElement="Assoc_Dur6">
+        <di:waypoint x="1344" y="310" />
+        <di:waypoint x="1344" y="285" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

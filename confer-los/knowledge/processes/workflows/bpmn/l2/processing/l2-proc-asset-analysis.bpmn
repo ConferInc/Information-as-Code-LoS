@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_AssetAnalysis" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:collaboration id="Collaboration_AssetAnalysis">
+    <bpmn:participant id="Participant_AssetProc" name="Processing - Asset Analysis (L2)" processRef="Process_AssetAnalysis_L2" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_AssetAnalysis_L2" name="Asset Analysis Process" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Assets">
+      <bpmn:lane id="Lane_Processor_Assets" name="Loan Processor (Human)">
+        <bpmn:flowNodeRef>Task_ReviewLargeDeposit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerifyEMD</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_InsufficientFunds</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Agents_Assets" name="System Agents (Automated)">
+        <bpmn:flowNodeRef>StartEvent_AssetDocs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OCRBankStmt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_LargeDep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_EMDCleared</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CalcFunds</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Sufficient</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_AssetsVerified</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_AssetDocs" name="Bank Statements Received">
+      <bpmn:outgoing>Flow_StartToOCR</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_OCRBankStmt" name="OCR Extraction (Bank Statements)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="ocr-extract-assets" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StartToOCR</bpmn:incoming>
+      <bpmn:outgoing>Flow_OCRToLargeDep</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_LargeDep" name="Large Deposit &gt; 50% Income?">
+      <bpmn:documentation>Checks if any deposit exceeds 50% of qualifying monthly income.</bpmn:documentation>
+      <bpmn:incoming>Flow_OCRToLargeDep</bpmn:incoming>
+      <bpmn:incoming>Flow_DepResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_DepYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_DepNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ReviewLargeDeposit" name="Source Large Deposits">
+      <bpmn:documentation>Review LOX/Gift Letter for large deposits.</bpmn:documentation>
+      <bpmn:incoming>Flow_DepYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_DepResolved</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_EMDCleared" name="EMD Cleared?">
+      <bpmn:documentation>Is EMD withdrawal visible?</bpmn:documentation>
+      <bpmn:incoming>Flow_DepNo</bpmn:incoming>
+      <bpmn:incoming>Flow_EMDResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_EMDNo</bpmn:outgoing>
+      <bpmn:outgoing>Flow_EMDYes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_VerifyEMD" name="Verify EMD Clearance">
+      <bpmn:documentation>Obtain proof of EMD clearance.</bpmn:documentation>
+      <bpmn:incoming>Flow_EMDNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_EMDResolved</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_CalcFunds" name="Calculate Funds to Close">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="calc-funds-to-close" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_EMDYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_CalcToSuff</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Sufficient" name="Funds Sufficient?">
+      <bpmn:incoming>Flow_CalcToSuff</bpmn:incoming>
+      <bpmn:incoming>Flow_FundsAdded</bpmn:incoming>
+      <bpmn:outgoing>Flow_SuffYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_SuffNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_InsufficientFunds" name="Request Additional Assets">
+      <bpmn:documentation>Borrower needs more funds to close.</bpmn:documentation>
+      <bpmn:incoming>Flow_SuffNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_FundsAdded</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="EndEvent_AssetsVerified" name="Assets Verified">
+      <bpmn:incoming>Flow_SuffYes</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToOCR" sourceRef="StartEvent_AssetDocs" targetRef="Task_OCRBankStmt" />
+    <bpmn:sequenceFlow id="Flow_OCRToLargeDep" sourceRef="Task_OCRBankStmt" targetRef="Gateway_LargeDep" />
+    <bpmn:sequenceFlow id="Flow_DepYes" name="Yes" sourceRef="Gateway_LargeDep" targetRef="Task_ReviewLargeDeposit" />
+    <bpmn:sequenceFlow id="Flow_DepResolved" sourceRef="Task_ReviewLargeDeposit" targetRef="Gateway_LargeDep" />
+    <bpmn:sequenceFlow id="Flow_DepNo" name="No" sourceRef="Gateway_LargeDep" targetRef="Gateway_EMDCleared" />
+    <bpmn:sequenceFlow id="Flow_EMDNo" name="No" sourceRef="Gateway_EMDCleared" targetRef="Task_VerifyEMD" />
+    <bpmn:sequenceFlow id="Flow_EMDResolved" sourceRef="Task_VerifyEMD" targetRef="Gateway_EMDCleared" />
+    <bpmn:sequenceFlow id="Flow_EMDYes" name="Yes" sourceRef="Gateway_EMDCleared" targetRef="Task_CalcFunds" />
+    <bpmn:sequenceFlow id="Flow_CalcToSuff" sourceRef="Task_CalcFunds" targetRef="Gateway_Sufficient" />
+    <bpmn:sequenceFlow id="Flow_SuffNo" name="No" sourceRef="Gateway_Sufficient" targetRef="Task_InsufficientFunds" />
+    <bpmn:sequenceFlow id="Flow_FundsAdded" sourceRef="Task_InsufficientFunds" targetRef="Gateway_Sufficient" />
+    <bpmn:sequenceFlow id="Flow_SuffYes" name="Yes" sourceRef="Gateway_Sufficient" targetRef="EndEvent_AssetsVerified" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Assets">
+    <bpmndi:BPMNPlane id="BPMNPlane_Assets" bpmnElement="Collaboration_AssetAnalysis">
+      <bpmndi:BPMNShape id="Participant_Assets_di" bpmnElement="Participant_AssetProc" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1300" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agents_Assets_di" bpmnElement="Lane_Agents_Assets" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="190" y="80" width="1270" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Processor_Assets_di" bpmnElement="Lane_Processor_Assets" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="280" width="1270" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Assets_di" bpmnElement="StartEvent_AssetDocs">
+        <dc:Bounds x="252" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="228" y="205" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_OCR_Assets_di" bpmnElement="Task_OCRBankStmt">
+        <dc:Bounds x="340" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_LargeDep_di" bpmnElement="Gateway_LargeDep" isMarkerVisible="true">
+        <dc:Bounds x="500" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="488" y="118" width="75" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SourceDep_di" bpmnElement="Task_ReviewLargeDeposit">
+        <dc:Bounds x="475" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_EMD_di" bpmnElement="Gateway_EMDCleared" isMarkerVisible="true">
+        <dc:Bounds x="650" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="638" y="131" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_VerifyEMD_di" bpmnElement="Task_VerifyEMD">
+        <dc:Bounds x="625" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CalcFunds_di" bpmnElement="Task_CalcFunds">
+        <dc:Bounds x="800" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Suff_di" bpmnElement="Gateway_Sufficient" isMarkerVisible="true">
+        <dc:Bounds x="950" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="933" y="131" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Insuff_di" bpmnElement="Task_InsufficientFunds">
+        <dc:Bounds x="925" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Assets_di" bpmnElement="EndEvent_AssetsVerified">
+        <dc:Bounds x="1102" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1084" y="205" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToOCR_di" bpmnElement="Flow_StartToOCR">
+        <di:waypoint x="288" y="180" />
+        <di:waypoint x="340" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_OCRToLargeDep_di" bpmnElement="Flow_OCRToLargeDep">
+        <di:waypoint x="440" y="180" />
+        <di:waypoint x="500" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DepYes_di" bpmnElement="Flow_DepYes">
+        <di:waypoint x="525" y="205" />
+        <di:waypoint x="525" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="531" y="260" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DepResolved_di" bpmnElement="Flow_DepResolved">
+        <di:waypoint x="475" y="380" />
+        <di:waypoint x="450" y="380" />
+        <di:waypoint x="450" y="180" />
+        <di:waypoint x="500" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DepNo_di" bpmnElement="Flow_DepNo">
+        <di:waypoint x="550" y="180" />
+        <di:waypoint x="650" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="593" y="162" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EMDNo_di" bpmnElement="Flow_EMDNo">
+        <di:waypoint x="675" y="205" />
+        <di:waypoint x="675" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="683" y="260" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EMDResolved_di" bpmnElement="Flow_EMDResolved">
+        <di:waypoint x="625" y="380" />
+        <di:waypoint x="600" y="380" />
+        <di:waypoint x="600" y="180" />
+        <di:waypoint x="650" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EMDYes_di" bpmnElement="Flow_EMDYes">
+        <di:waypoint x="700" y="180" />
+        <di:waypoint x="800" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="741" y="162" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CalcToSuff_di" bpmnElement="Flow_CalcToSuff">
+        <di:waypoint x="900" y="180" />
+        <di:waypoint x="950" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SuffNo_di" bpmnElement="Flow_SuffNo">
+        <di:waypoint x="975" y="205" />
+        <di:waypoint x="975" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="983" y="260" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FundsAdded_di" bpmnElement="Flow_FundsAdded">
+        <di:waypoint x="925" y="380" />
+        <di:waypoint x="900" y="380" />
+        <di:waypoint x="900" y="180" />
+        <di:waypoint x="950" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SuffYes_di" bpmnElement="Flow_SuffYes">
+        <di:waypoint x="1000" y="180" />
+        <di:waypoint x="1102" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1042" y="162" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_ClosingDisc" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0">
+  <bpmn:process id="Process_ClosingDisc" name="Closing Disclosure (CD) Process" isExecutable="true">
+    
+    <bpmn:laneSet id="LaneSet_CD">
+      <bpmn:lane id="Lane_Closer" name="Closer (Human)">
+        <bpmn:flowNodeRef>Task_AuditQC</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PrepCD</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReleaseDocs</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System_CD" name="System (Compliance/Calc)">
+        <bpmn:flowNodeRef>Start_CTC</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CalcFinal</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendCD</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_3DayWait</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ReadyToSign</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_CTC" name="Clear to Close (CTC)">
+      <bpmn:outgoing>Flow_Start_Audit</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_AuditQC" name="Pre-Closing Audit (QC)">
+      <bpmn:documentation>Verify Rate Lock, Fees, Policy.</bpmn:documentation>
+      <bpmn:incoming>Flow_Start_Audit</bpmn:incoming>
+      <bpmn:outgoing>Flow_Audit_Calc</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_CalcFinal" name="Calculate Cash to Close">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="calc-final-fees" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Audit_Calc</bpmn:incoming>
+      <bpmn:outgoing>Flow_Calc_Prep</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:userTask id="Task_PrepCD" name="Prepare Closing Disclosure">
+      <bpmn:documentation>Review CD PDF against LE.</bpmn:documentation>
+      <bpmn:incoming>Flow_Calc_Prep</bpmn:incoming>
+      <bpmn:outgoing>Flow_Prep_Send</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_SendCD" name="Send CD to Borrower">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send-disclosure-package" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Prep_Send</bpmn:incoming>
+      <bpmn:outgoing>Flow_Send_Wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:intermediateCatchEvent id="Event_3DayWait" name="TRID 3-Day Wait">
+      <bpmn:incoming>Flow_Send_Wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_Wait_Release</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Timer_3Days">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P3D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+
+    <bpmn:userTask id="Task_ReleaseDocs" name="Release Final Loan Docs">
+      <bpmn:documentation>Send package to Notary/Title.</bpmn:documentation>
+      <bpmn:incoming>Flow_Wait_Release</bpmn:incoming>
+      <bpmn:outgoing>Flow_Release_End</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="End_ReadyToSign" name="Ready for Signing">
+      <bpmn:incoming>Flow_Release_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Start_Audit" sourceRef="Start_CTC" targetRef="Task_AuditQC" />
+    <bpmn:sequenceFlow id="Flow_Audit_Calc" sourceRef="Task_AuditQC" targetRef="Task_CalcFinal" />
+    <bpmn:sequenceFlow id="Flow_Calc_Prep" sourceRef="Task_CalcFinal" targetRef="Task_PrepCD" />
+    <bpmn:sequenceFlow id="Flow_Prep_Send" sourceRef="Task_PrepCD" targetRef="Task_SendCD" />
+    <bpmn:sequenceFlow id="Flow_Send_Wait" sourceRef="Task_SendCD" targetRef="Event_3DayWait" />
+    <bpmn:sequenceFlow id="Flow_Wait_Release" sourceRef="Event_3DayWait" targetRef="Task_ReleaseDocs" />
+    <bpmn:sequenceFlow id="Flow_Release_End" sourceRef="Task_ReleaseDocs" targetRef="End_ReadyToSign" />
+
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_CD">
+    <bpmndi:BPMNPlane id="BPMNPlane_CD" bpmnElement="Process_ClosingDisc">
+      <bpmndi:BPMNShape id="Lane_Closer_di" bpmnElement="Lane_Closer" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="160" y="80" width="1000" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_di" bpmnElement="Lane_System_CD" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="160" y="280" width="1000" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_CTC">
+        <dc:Bounds x="200" y="360" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Audit_di" bpmnElement="Task_AuditQC">
+        <dc:Bounds x="280" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Calc_di" bpmnElement="Task_CalcFinal">
+        <dc:Bounds x="420" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Prep_di" bpmnElement="Task_PrepCD">
+        <dc:Bounds x="560" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Send_di" bpmnElement="Task_SendCD">
+        <dc:Bounds x="700" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_Wait_di" bpmnElement="Event_3DayWait">
+        <dc:Bounds x="850" y="362" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Rel_di" bpmnElement="Task_ReleaseDocs">
+        <dc:Bounds x="950" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End_ReadyToSign">
+        <dc:Bounds x="1100" y="362" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Edge_1" bpmnElement="Flow_Start_Audit">
+        <di:waypoint x="236" y="378" />
+        <di:waypoint x="258" y="378" />
+        <di:waypoint x="258" y="180" />
+        <di:waypoint x="280" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_2" bpmnElement="Flow_Audit_Calc">
+        <di:waypoint x="380" y="180" />
+        <di:waypoint x="400" y="180" />
+        <di:waypoint x="400" y="380" />
+        <di:waypoint x="420" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_3" bpmnElement="Flow_Calc_Prep">
+        <di:waypoint x="520" y="380" />
+        <di:waypoint x="540" y="380" />
+        <di:waypoint x="540" y="180" />
+        <di:waypoint x="560" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_4" bpmnElement="Flow_Prep_Send">
+        <di:waypoint x="660" y="180" />
+        <di:waypoint x="680" y="180" />
+        <di:waypoint x="680" y="380" />
+        <di:waypoint x="700" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_5" bpmnElement="Flow_Send_Wait">
+        <di:waypoint x="800" y="380" />
+        <di:waypoint x="850" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_6" bpmnElement="Flow_Wait_Release">
+        <di:waypoint x="886" y="380" />
+        <di:waypoint x="918" y="380" />
+        <di:waypoint x="918" y="180" />
+        <di:waypoint x="950" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_7" bpmnElement="Flow_Release_End">
+        <di:waypoint x="1050" y="180" />
+        <di:waypoint x="1075" y="180" />
+        <di:waypoint x="1075" y="380" />
+        <di:waypoint x="1100" y="380" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

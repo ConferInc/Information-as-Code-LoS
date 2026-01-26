@@ -1,0 +1,897 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_PreQualificationL1" targetNamespace="https://confersolutions.ai/bpmn/l1/pre-qualification" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_PreQualification">
+    <bpmn:participant id="Participant_PreQual" name="Pre-Qualification Process" processRef="Process_PreQualification_L1" />
+    <bpmn:textAnnotation id="Note_ServiceArchitecture">
+      <bpmn:text>SERVICE ARCHITECTURE
+
+All services are enterprise-ready microservices.
+Phase 1 (MoXi): Simpler implementations inside same interfaces.
+
+PricingService: Static grid (Phase 1) / Full engine (Enterprise)
+PropertyValidationService: Partial validation (MX) / Full (US)
+ProductCatalogService: Simple query (Phase 1) / Rules engine (Enterprise)
+
+Principle: "Common where possible, custom only where necessary."</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_DataFlow">
+      <bpmn:text>DATA CAPTURED (Anonymous - No PII)
+
+- Loan Purpose: Purchase / Refinance
+- Property Zip Code (validation via PropertyValidationService)
+- Estimated Property Value
+- Down Payment Amount/Percentage
+- Credit Score Range (self-reported for estimation)
+- Annual Gross Income
+
+Database: applications (draft), properties (zip only)
+No customers record created until Registration (WF-01)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Conversion">
+      <bpmn:text>CONVERSION METRICS
+
+Duration: 5-10 minutes
+Conversion to Application: ~40%
+
+Exit Points:
+- User abandons form
+- No products available for criteria
+- User saves quote for later</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Evidence">
+      <bpmn:text>GROUNDING DOCUMENTS
+
+- WF-08: borrower-portal-workflows.md (lines 776-818)
+- B-03: borrower-portal-features.md
+- W-01/W-02/W-03: borrower-portal-wireframes.md
+- Schema: current_schema_architecture.md
+- Architecture: service_extension_points.md</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_PreQualification_L1" name="Pre-Qualification - L1 Process Overview" isExecutable="false">
+    <bpmn:documentation>
+CONFER LOAN ORIGINATION SYSTEM - L1 PRE-QUALIFICATION PROCESS
+
+PURPOSE: Expand the L0 "Pre-Qualification" phase into detailed sub-steps showing how a prospective borrower obtains a rate quote.
+
+AUDIENCE: Business analysts, process owners, loan officers, UI/UX designers.
+
+PARENT: L0 Task "Pre-Qualification" (Task_PreQualification)
+
+KEY CHARACTERISTICS:
+- Anonymous user - no account required
+- No PII collected (no SSN, DOB, full address)
+- Quick estimate only (not formal pre-approval)
+- Self-reported credit score range for rate estimation
+- Hard credit pull happens later in Application phase (Task 058)
+
+ENTERPRISE ARCHITECTURE:
+All service calls go through well-defined interfaces:
+- PricingService.getRateQuote()
+- PropertyValidationService.validateAddress()
+- ProductCatalogService.getEligibleProducts()
+
+Phase 1 (MoXi) uses simpler implementations INSIDE these services.
+The BPMN workflow remains stable regardless of implementation complexity.
+
+DOWNSTREAM: Leads to Registration (WF-01) then Application (L1-02)
+
+SPEC REFERENCE: WF-08 in docs/specs/borrower-portal-workflows.md
+
+AGENTIC ARCHITECTURE - WORKER AGENTS USED:
+This phase uses the following Worker Agents (see Task 059b):
+- Pricing Agent: Calculate rate quotes based on borrower profile and loan parameters
+- Property Validation Agent: Validate property address and retrieve property data
+- Product Catalog Agent: Query eligible loan products based on criteria
+- Email Agent: Send pre-qualification letter (if user provides email)
+- Audit Agent: Log all actions for compliance (quote requests, eligibility checks)
+
+For Worker Agent specifications: tasks/059b_worker_agent_catalog.md
+For Orchestrating Agents (Processing phase): tasks/059a_bpmn_l1_processing_agentic.md
+    </bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_PreQual">
+      <bpmn:lane id="Lane_Borrower" name="Prospective Borrower (Anonymous)">
+        <bpmn:documentation>
+ACTOR: Prospective Borrower
+
+An anonymous website visitor exploring mortgage options.
+No account required at this stage.
+
+CHARACTERISTICS:
+- May be first-time homebuyer or refinancing
+- Seeking quick rate estimate without commitment
+- No hard credit inquiry at this stage
+- Can exit at any time without consequences
+
+UI: Borrower Portal - Public Landing Page and Pre-Qual Form
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Start_GetQuote</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectLoanPurpose</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterPropertyInfo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterFinancialInfo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SubmitForQuote</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewRateOptions</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ContinueDecision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Exit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ToRegistration</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Portal" name="Borrower Portal (Frontend)">
+        <bpmn:documentation>
+SYSTEM: Borrower Portal Frontend
+
+React/Next.js application serving the public-facing pre-qualification form.
+
+RESPONSIBILITIES:
+- Render multi-step form (W-02 wireframe)
+- Client-side validation
+- Call backend services via API gateway
+- Display rate results (W-03 wireframe)
+- Store pre-qual data in session for continuation
+
+SCREENS:
+- W-01: Landing Page with "Get a Quote" CTA
+- W-02: Pre-Qualification Form (multi-step)
+- W-03: Rate Results Display
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_ValidateInputs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DisplayRateOptions</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Services" name="Backend Services (Microservices)">
+        <bpmn:documentation>
+SYSTEM: Backend Microservices
+
+Enterprise-ready service layer handling business logic.
+
+SERVICES INVOKED:
+1. PropertyValidationService - Validate property location
+2. ProductCatalogService - Find eligible loan products
+3. PricingService - Calculate rates and payments
+
+ARCHITECTURE:
+- All services have complete interfaces from day one
+- Phase 1 (MoXi): Simpler implementations inside services
+- Enterprise: Full implementations with external integrations
+
+REFERENCE: docs/architecture/service_extension_points.md
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_ValidateProperty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GetEligibleProducts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CalculateRates</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PropertyValid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ProductsAvailable</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_InvalidProperty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_NoProducts</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_GetQuote" name="Get a Quote Clicked">
+      <bpmn:documentation>
+TRIGGER: User clicks "Get a Quote" button on landing page (W-01)
+
+ENTRY POINTS:
+- Direct navigation to website
+- Marketing campaign landing
+- Referral link from partner
+- Search engine result
+
+USER INTENT: "I want to see what rates I can get"
+
+SPEC: WF-08 Step 1
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_StartToLoanPurpose</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_SelectLoanPurpose" name="Select Loan Purpose">
+      <bpmn:documentation>
+TASK: Select Loan Purpose
+ACTOR: Prospective Borrower
+UI: W-02 Step 1
+
+USER ACTION:
+Select either "Purchase" (buying a home) or "Refinance" (existing mortgage)
+
+FORM FIELDS:
+- Loan Purpose: Radio buttons
+  - Purchase: Buying a new property
+  - Refinance: Replacing existing mortgage
+
+VALIDATION:
+- Required selection
+
+DATABASE MAPPING:
+- applications.key_information.loan_purpose
+
+SPEC: WF-08 Step 2
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_StartToLoanPurpose</bpmn:incoming>
+      <bpmn:outgoing>Flow_LoanPurposeToProperty</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_EnterPropertyInfo" name="Enter Property Information">
+      <bpmn:documentation>
+TASK: Enter Property Information
+ACTOR: Prospective Borrower
+UI: W-02 Step 2
+
+USER ACTION:
+Enter basic property details for rate calculation
+
+FORM FIELDS:
+- Property Zip Code: Text input (5 digits)
+- Estimated Property Value: Currency input
+
+VALIDATION:
+- Zip code: 5 digits, numeric only
+- Property value: Greater than $0
+
+DATABASE MAPPING:
+- properties.address.zip (JSONB - zip only at this stage)
+- properties.purchase_price
+
+NOTE: Full address captured later in Application phase.
+At pre-qual, we only need zip for property validation service.
+
+SPEC: WF-08 Steps 3-4
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_LoanPurposeToProperty</bpmn:incoming>
+      <bpmn:outgoing>Flow_PropertyToFinancial</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_EnterFinancialInfo" name="Enter Financial Information">
+      <bpmn:documentation>
+TASK: Enter Financial Information
+ACTOR: Prospective Borrower
+UI: W-02 Step 3
+
+USER ACTION:
+Enter financial details for rate estimation
+
+FORM FIELDS:
+- Down Payment: Currency OR percentage toggle
+  - If Purchase: Down payment amount
+  - If Refinance: Current equity amount
+- Credit Score Range: Dropdown selection
+  - Excellent (760+)
+  - Good (700-759)
+  - Fair (660-699)
+  - Below 660
+- Annual Gross Income: Currency input
+
+VALIDATION:
+- Down payment: 0-100% of property value
+- Credit score: Required selection
+- Income: Greater than $0
+
+DATABASE MAPPING:
+- Calculated: loan_amount = property_value - down_payment
+- applications.key_information.credit_range
+- applications.key_information.annual_income
+
+NOTE ON CREDIT:
+This is self-reported for estimation purposes only.
+Hard credit pull (tri-merge) happens in Application phase
+after borrower creates account and provides authorization.
+
+SPEC: WF-08 Steps 5-7
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_PropertyToFinancial</bpmn:incoming>
+      <bpmn:outgoing>Flow_FinancialToSubmit</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_SubmitForQuote" name="Submit for Rate Quote">
+      <bpmn:documentation>
+TASK: Submit for Rate Quote
+ACTOR: Prospective Borrower
+UI: W-02 Submit Button
+
+USER ACTION:
+Click "Get My Rate" button to submit form
+
+WHAT HAPPENS:
+1. Form data validated client-side
+2. Request sent to backend services
+3. Loading indicator shown
+4. Results displayed (W-03)
+
+NO DATA PERSISTED YET:
+At this point, data is only in session.
+Database records created only if user continues to Registration.
+
+SPEC: WF-08 Step 8
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_FinancialToSubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitToValidate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReviewRateOptions" name="Review Rate Options">
+      <bpmn:documentation>
+TASK: Review Rate Options
+ACTOR: Prospective Borrower
+UI: W-03 Rate Results
+
+USER ACTION:
+Review displayed rate options and decide next steps
+
+DISPLAY CONTENT:
+- 3-5 loan product options
+- For each option:
+  - Product name (e.g., "30-Year Fixed", "15-Year Fixed")
+  - Interest rate
+  - APR (Annual Percentage Rate)
+  - Estimated monthly payment (P&amp;I)
+  - Estimated closing costs range
+
+USER OPTIONS:
+1. "Start My Application" - Continue to Registration (WF-01) then full Application
+2. "Save Quote" - Email quote for later (optional feature)
+3. "Adjust Criteria" - Go back and modify inputs
+4. Exit/Close - Leave without continuing
+
+TERMINOLOGY NOTE:
+This is PRE-QUALIFICATION (rate estimate based on self-reported data).
+This is NOT pre-approval. Pre-approval requires:
+- Full application (URLA 1003)
+- Hard credit pull with authorization
+- Document verification
+- Underwriter review
+
+SPEC: WF-08 Steps 10-11
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DisplayToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToDecision</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_ValidateInputs" name="Validate Form Inputs">
+      <bpmn:documentation>
+TASK: Validate Form Inputs
+SYSTEM: Borrower Portal (Frontend)
+
+PURPOSE:
+Client-side validation before sending to backend services
+
+VALIDATIONS:
+- All required fields populated
+- Zip code format (5 digits)
+- Property value &gt; 0
+- Down payment within valid range
+- Income &gt; 0
+
+ON SUCCESS:
+Proceed to backend service calls
+
+ON FAILURE:
+Display inline validation errors
+User corrects and resubmits
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_SubmitToValidate</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidateToProperty</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_DisplayRateOptions" name="Display Rate Options">
+      <bpmn:documentation>
+TASK: Display Rate Options
+SYSTEM: Borrower Portal (Frontend)
+UI: W-03 Rate Results Screen
+
+PURPOSE:
+Render the rate calculation results for user review
+
+INPUT:
+RateQuoteResponse from PricingService containing:
+- Array of product options
+- Rates, APRs, monthly payments
+- Disclaimers and assumptions
+
+DISPLAY:
+- Product comparison cards
+- Sort by rate or monthly payment
+- "Start My Application" CTA button (NOT "Get Pre-Approved")
+- "Adjust Criteria" link
+
+NOTE: CTA says "Start My Application" because this is pre-qualification,
+not pre-approval. Pre-approval comes later after full application + verification.
+
+WIREFRAME: W-03 in borrower-portal-wireframes.md
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_CalculateToDisplay</bpmn:incoming>
+      <bpmn:outgoing>Flow_DisplayToReview</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_ValidateProperty" name="Validate Property Location">
+      <bpmn:documentation>
+TASK: Validate Property Location
+SERVICE: PropertyValidationService.validateAddress()
+
+PURPOSE:
+Validate that the property location is serviceable
+
+INPUT:
+- Property zip code
+- Country context (derived from zip or explicit)
+
+OUTPUT (AddressValidationResult):
+{
+  isValid: boolean,
+  validationLevel: 'full' | 'partial' | 'unverified',
+  canProceed: boolean,
+  validationMessages: string[]
+}
+
+PHASE 1 (MoXi - Mexico Properties):
+- Returns: validationLevel: 'partial', canProceed: true
+- Message: "Mexico address - limited validation available"
+- All Mexico properties are serviceable
+
+ENTERPRISE (US Properties):
+- Full USPS/SmartyStreets validation
+- County lookup, FIPS codes
+- Serviceable area check
+- Flood zone identification
+
+ARCHITECTURE:
+Same interface, different implementations.
+BPMN remains stable regardless of implementation.
+
+REFERENCE: docs/architecture/service_extension_points.md
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ValidateToProperty</bpmn:incoming>
+      <bpmn:outgoing>Flow_PropertyToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_GetEligibleProducts" name="Get Eligible Products">
+      <bpmn:documentation>
+TASK: Get Eligible Products
+SERVICE: ProductCatalogService.getEligibleProducts()
+
+PURPOSE:
+Retrieve loan products that match the borrower's criteria
+
+INPUT:
+- Loan purpose (purchase/refinance)
+- Property type (inferred or default)
+- Loan amount (property value - down payment)
+- Credit score range
+- Occupancy type (inferred as primary residence)
+
+OUTPUT:
+Array of eligible LoanProduct objects with:
+- Product ID
+- Product name
+- Term (years)
+- Type (fixed/ARM)
+- Rate range
+
+PHASE 1 (MoXi):
+- Simple query: SELECT * FROM loan_products WHERE is_active = true
+- Limited product set (2-3 products)
+
+ENTERPRISE:
+- Full eligibility rules engine
+- Agency guidelines (Fannie, Freddie, FHA, VA)
+- Investor overlays
+- State-specific restrictions
+
+REFERENCE: docs/architecture/service_extension_points.md
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_ProductsToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_CalculateRates" name="Calculate Rate Quote">
+      <bpmn:documentation>
+TASK: Calculate Rate Quote
+SERVICE: PricingService.getRateQuote()
+
+PURPOSE:
+Calculate interest rates and monthly payments for eligible products
+
+INPUT (RateQuoteRequest):
+{
+  loanAmount: number,
+  propertyValue: number,
+  ltv: number (calculated),
+  creditScoreRange: string,
+  loanPurpose: 'purchase' | 'refinance',
+  propertyType: string,
+  occupancyType: string,
+  products: LoanProduct[]
+}
+
+OUTPUT (RateQuoteResponse):
+{
+  quotes: [{
+    productId: string,
+    productName: string,
+    interestRate: number,
+    apr: number,
+    monthlyPayment: number,
+    estimatedClosingCosts: { min: number, max: number },
+    assumptions: string[]
+  }],
+  disclaimer: string,
+  expiresAt: timestamp
+}
+
+PHASE 1 (MoXi):
+- Static rate grid (~20 lines of code)
+- Prime rate + margin based on LTV and credit tier
+- Simple monthly payment calculation
+
+ENTERPRISE:
+- Full pricing engine with LLPAs
+- Real-time rate sheet integration
+- Optimal Blue or Polly API
+- Lock management
+
+CALCULATION NOTES:
+- Monthly payment = P&amp;I only (no taxes/insurance at this stage)
+- APR includes estimated fees
+- Rates are estimates, not locked
+
+REFERENCE: docs/architecture/service_extension_points.md
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AvailableToCalculate</bpmn:incoming>
+      <bpmn:outgoing>Flow_CalculateToDisplay</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_PropertyValid" name="Property Valid?">
+      <bpmn:documentation>
+DECISION: Is the property location valid and serviceable?
+
+OUTCOMES:
+- YES (canProceed: true): Continue to product eligibility
+- NO (canProceed: false): End with "not serviceable" message
+
+NOTE: For Phase 1 (MoXi), all Mexico properties return canProceed: true
+with validationLevel: 'partial'. The gateway checks canProceed, not validationLevel.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_PropertyToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidToProducts</bpmn:outgoing>
+      <bpmn:outgoing>Flow_InvalidToEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_ProductsAvailable" name="Products Available?">
+      <bpmn:documentation>
+DECISION: Are there loan products matching the criteria?
+
+OUTCOMES:
+- YES (products.length &gt; 0): Continue to rate calculation
+- NO (products.length = 0): End with "no products" message
+
+This can happen if:
+- Loan amount outside product limits
+- Credit score too low for all products
+- Property type not supported
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ProductsToGateway</bpmn:incoming>
+      <bpmn:incoming>Flow_ValidToProducts</bpmn:incoming>
+      <bpmn:outgoing>Flow_AvailableToCalculate</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NoProductsToEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_ContinueDecision" name="Continue to Application?">
+      <bpmn:documentation>
+DECISION: Does the user want to proceed to full application?
+
+USER CHOICES:
+- "Start My Application" → Continue to Registration (WF-01)
+- Exit/Close → End session
+
+DATA PRESERVATION:
+If user continues, pre-qual data is stored in session/localStorage
+and pre-filled in the application after registration.
+
+SPEC: WF-08 Step 11
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ReviewToDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_ContinueToRegistration</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ExitToEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Exit" name="User Exits">
+      <bpmn:documentation>
+END: User Exits Without Continuing
+
+The user chose not to proceed to full application.
+
+POSSIBLE REASONS:
+- Rates not attractive
+- Not ready to commit
+- Just exploring options
+- Will return later
+
+DATA:
+- No database records created
+- Session data discarded
+- Analytics event logged for conversion tracking
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ExitToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_ToRegistration" name="To Registration (WF-01)">
+      <bpmn:documentation>
+END: Continue to Registration
+
+User clicked "Start My Application" to proceed.
+
+NEXT STEPS:
+1. Redirect to Registration flow (WF-01)
+2. User creates account (email + password)
+3. After registration, redirected to Application (L1-02)
+4. Pre-qual data pre-filled in application form
+
+IMPORTANT - TERMINOLOGY:
+This is the end of PRE-QUALIFICATION (rate estimate).
+The user is NOT pre-approved at this point.
+
+The journey continues:
+- Registration → Application → Processing → Underwriting
+- PRE-APPROVAL LETTER issued after underwriting review (if approved)
+- PRE-QUALIFICATION LETTER can be issued now (weaker, unverified)
+
+DATA PRESERVATION:
+- Pre-qual data stored in session/localStorage
+- Loan purpose, property info, financial info carried forward
+- Becomes draft application after registration
+
+SPEC: WF-01 Steps 14-15 in borrower-portal-workflows.md
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ContinueToRegistration</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_InvalidProperty" name="Property Not Serviceable">
+      <bpmn:documentation>
+END: Property Not Serviceable
+
+The property location is not in a serviceable area.
+
+DISPLAY MESSAGE:
+"We're sorry, we don't currently offer loans for properties in this area.
+Please contact us for more information."
+
+NOTE FOR PHASE 1 (MoXi):
+This path is rarely taken since Mexico properties
+return canProceed: true with partial validation.
+
+ENTERPRISE:
+May occur for properties in non-serviceable states,
+unincorporated areas, or restricted zones.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_InvalidToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToLoanPurpose" sourceRef="Start_GetQuote" targetRef="Task_SelectLoanPurpose" />
+    <bpmn:sequenceFlow id="Flow_LoanPurposeToProperty" sourceRef="Task_SelectLoanPurpose" targetRef="Task_EnterPropertyInfo" />
+    <bpmn:sequenceFlow id="Flow_PropertyToFinancial" sourceRef="Task_EnterPropertyInfo" targetRef="Task_EnterFinancialInfo" />
+    <bpmn:sequenceFlow id="Flow_FinancialToSubmit" sourceRef="Task_EnterFinancialInfo" targetRef="Task_SubmitForQuote" />
+    <bpmn:sequenceFlow id="Flow_ReviewToDecision" sourceRef="Task_ReviewRateOptions" targetRef="Gateway_ContinueDecision" />
+    <bpmn:sequenceFlow id="Flow_ContinueToRegistration" name="Start My Application" sourceRef="Gateway_ContinueDecision" targetRef="End_ToRegistration" />
+    <bpmn:sequenceFlow id="Flow_ExitToEnd" name="Exit" sourceRef="Gateway_ContinueDecision" targetRef="End_Exit" />
+    <bpmn:sequenceFlow id="Flow_SubmitToValidate" sourceRef="Task_SubmitForQuote" targetRef="Task_ValidateInputs" />
+    <bpmn:sequenceFlow id="Flow_ValidateToProperty" sourceRef="Task_ValidateInputs" targetRef="Task_ValidateProperty" />
+    <bpmn:sequenceFlow id="Flow_DisplayToReview" sourceRef="Task_DisplayRateOptions" targetRef="Task_ReviewRateOptions" />
+    <bpmn:sequenceFlow id="Flow_PropertyToGateway" sourceRef="Task_ValidateProperty" targetRef="Gateway_PropertyValid" />
+    <bpmn:sequenceFlow id="Flow_ValidToProducts" name="Valid" sourceRef="Gateway_PropertyValid" targetRef="Gateway_ProductsAvailable" />
+    <bpmn:sequenceFlow id="Flow_InvalidToEnd" name="Invalid" sourceRef="Gateway_PropertyValid" targetRef="End_InvalidProperty" />
+    <bpmn:sequenceFlow id="Flow_ProductsToGateway" sourceRef="Task_GetEligibleProducts" targetRef="Gateway_ProductsAvailable" />
+    <bpmn:sequenceFlow id="Flow_AvailableToCalculate" name="Products Found" sourceRef="Gateway_ProductsAvailable" targetRef="Task_CalculateRates" />
+    <bpmn:sequenceFlow id="Flow_NoProductsToEnd" name="No Products" sourceRef="Gateway_ProductsAvailable" targetRef="End_NoProducts" />
+    <bpmn:sequenceFlow id="Flow_CalculateToDisplay" sourceRef="Task_CalculateRates" targetRef="Task_DisplayRateOptions" />
+    <bpmn:endEvent id="End_NoProducts" name="No Products Available">
+      <bpmn:documentation>
+END: No Products Available
+
+No loan products match the user's criteria.
+
+DISPLAY MESSAGE:
+"We're sorry, we don't have products that match your criteria at this time.
+Please try adjusting your loan amount or down payment."
+
+OPTIONS FOR USER:
+- "Adjust Criteria" button to go back
+- Contact information for manual assistance
+
+POSSIBLE CAUSES:
+- Loan amount too high or too low
+- Credit score below minimum for all products
+- Property type not supported
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_NoProductsToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_PreQualL1">
+    <bpmndi:BPMNPlane id="BPMNPlane_PreQualL1" bpmnElement="Collaboration_PreQualification">
+      <bpmndi:BPMNShape id="Participant_di" bpmnElement="Participant_PreQual" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1340" height="740" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Services_di" bpmnElement="Lane_Services" isHorizontal="true">
+        <dc:Bounds x="190" y="440" width="1310" height="380" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Portal_di" bpmnElement="Lane_Portal" isHorizontal="true">
+        <dc:Bounds x="190" y="300" width="1310" height="140" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Borrower_di" bpmnElement="Lane_Borrower" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1310" height="220" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_GetQuote" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="242" y="172" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="220" y="215" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectLoanPurpose_di" bpmnElement="Task_SelectLoanPurpose" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="330" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EnterPropertyInfo_di" bpmnElement="Task_EnterPropertyInfo" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="480" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EnterFinancialInfo_di" bpmnElement="Task_EnterFinancialInfo" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="630" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitForQuote_di" bpmnElement="Task_SubmitForQuote" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="780" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewRateOptions_di" bpmnElement="Task_ReviewRateOptions" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1150" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateInputs_di" bpmnElement="Task_ValidateInputs" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="780" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DisplayRateOptions_di" bpmnElement="Task_DisplayRateOptions" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1150" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateProperty_di" bpmnElement="Task_ValidateProperty" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="780" y="500" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GetEligibleProducts_di" bpmnElement="Task_GetEligibleProducts" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="910" y="500" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CalculateRates_di" bpmnElement="Task_CalculateRates" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1040" y="500" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_PropertyValid_di" bpmnElement="Gateway_PropertyValid" isMarkerVisible="true">
+        <dc:Bounds x="805" y="615" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="792" y="672" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ProductsAvailable_di" bpmnElement="Gateway_ProductsAvailable" isMarkerVisible="true">
+        <dc:Bounds x="935" y="615" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="963.5" y="656" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContinueDecision_di" bpmnElement="Gateway_ContinueDecision" isMarkerVisible="true">
+        <dc:Bounds x="1295" y="165" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1350" y="186" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Exit_di" bpmnElement="End_Exit" bioc:stroke="#757575" bioc:fill="#eeeeee" color:background-color="#eeeeee" color:border-color="#757575">
+        <dc:Bounds x="1392" y="112" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1384" y="155" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ToRegistration_di" bpmnElement="End_ToRegistration" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1392" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1367" y="275" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_InvalidProperty_di" bpmnElement="End_InvalidProperty" bioc:stroke="#e53935" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="702" y="622" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="633" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_NoProducts_di" bpmnElement="End_NoProducts" bioc:stroke="#e53935" bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="942" y="752" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="870" y="746" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToLoanPurpose_di" bpmnElement="Flow_StartToLoanPurpose">
+        <di:waypoint x="278" y="190" />
+        <di:waypoint x="330" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LoanPurposeToProperty_di" bpmnElement="Flow_LoanPurposeToProperty">
+        <di:waypoint x="430" y="190" />
+        <di:waypoint x="480" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PropertyToFinancial_di" bpmnElement="Flow_PropertyToFinancial">
+        <di:waypoint x="580" y="190" />
+        <di:waypoint x="630" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FinancialToSubmit_di" bpmnElement="Flow_FinancialToSubmit">
+        <di:waypoint x="730" y="190" />
+        <di:waypoint x="780" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToDecision_di" bpmnElement="Flow_ReviewToDecision">
+        <di:waypoint x="1250" y="190" />
+        <di:waypoint x="1295" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ContinueToRegistration_di" bpmnElement="Flow_ContinueToRegistration" bioc:stroke="#43a047" color:border-color="#43a047">
+        <di:waypoint x="1320" y="215" />
+        <di:waypoint x="1320" y="250" />
+        <di:waypoint x="1392" y="250" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1304" y="263" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ExitToEnd_di" bpmnElement="Flow_ExitToEnd">
+        <di:waypoint x="1320" y="165" />
+        <di:waypoint x="1320" y="130" />
+        <di:waypoint x="1392" y="130" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1342" y="113" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitToValidate_di" bpmnElement="Flow_SubmitToValidate">
+        <di:waypoint x="830" y="230" />
+        <di:waypoint x="830" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidateToProperty_di" bpmnElement="Flow_ValidateToProperty">
+        <di:waypoint x="830" y="410" />
+        <di:waypoint x="830" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DisplayToReview_di" bpmnElement="Flow_DisplayToReview">
+        <di:waypoint x="1200" y="330" />
+        <di:waypoint x="1200" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PropertyToGateway_di" bpmnElement="Flow_PropertyToGateway">
+        <di:waypoint x="830" y="580" />
+        <di:waypoint x="830" y="615" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidToProducts_di" bpmnElement="Flow_ValidToProducts">
+        <di:waypoint x="855" y="640" />
+        <di:waypoint x="935" y="640" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="868.0000000000005" y="623.0000000000002" width="24" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InvalidToEnd_di" bpmnElement="Flow_InvalidToEnd" bioc:stroke="#e53935" color:border-color="#e53935">
+        <di:waypoint x="805" y="640" />
+        <di:waypoint x="738" y="640" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="757" y="622" width="33" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ProductsToGateway_di" bpmnElement="Flow_ProductsToGateway">
+        <di:waypoint x="960" y="580" />
+        <di:waypoint x="960" y="615" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AvailableToCalculate_di" bpmnElement="Flow_AvailableToCalculate">
+        <di:waypoint x="985" y="640" />
+        <di:waypoint x="1090" y="640" />
+        <di:waypoint x="1090" y="580" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1002" y="622" width="77" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NoProductsToEnd_di" bpmnElement="Flow_NoProductsToEnd" bioc:stroke="#e53935" color:border-color="#e53935">
+        <di:waypoint x="960" y="665" />
+        <di:waypoint x="960" y="752" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="887" y="699" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CalculateToDisplay_di" bpmnElement="Flow_CalculateToDisplay">
+        <di:waypoint x="1140" y="540" />
+        <di:waypoint x="1200" y="540" />
+        <di:waypoint x="1200" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Note_ServiceArchitecture_di" bpmnElement="Note_ServiceArchitecture">
+        <dc:Bounds x="1250" y="900" width="280" height="160" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Evidence_di" bpmnElement="Note_Evidence">
+        <dc:Bounds x="760" y="890" width="280" height="130" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Conversion_di" bpmnElement="Note_Conversion">
+        <dc:Bounds x="540" y="890" width="200" height="130" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_DataFlow_di" bpmnElement="Note_DataFlow">
+        <dc:Bounds x="210" y="890" width="310" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

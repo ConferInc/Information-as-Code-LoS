@@ -107,28 +107,28 @@ From `confer-los/apps/confer-web/package.json`:
 
 ```mermaid
 graph LR
-    CONFER_WEB[@confer/confer-web]
+    CONFER_WEB["@confer/confer-web"]
 
     %% Direct Workspace Dependencies
-    CONFER_WEB --> AUTH[@confer/auth]
-    CONFER_WEB --> DATABASE[@confer/database]
+    CONFER_WEB --> AUTH["@confer/auth"]
+    CONFER_WEB --> DATABASE["@confer/database"]
 
     %% Database Package Dependencies
-    DATABASE --> TYPES[@confer/types]
+    DATABASE --> TYPES["@confer/types"]
 
     %% External Dependencies
-    CONFER_WEB --> NEXT[Next.js 16.0.7]
-    CONFER_WEB --> REACT[React 19.2.0]
-    CONFER_WEB --> SUPABASE[@supabase/ssr<br/>@supabase/supabase-js]
-    CONFER_WEB --> RADIX[Radix UI Components]
-    CONFER_WEB --> FORM[React Hook Form]
-    CONFER_WEB --> ZOD[Zod Validation]
+    CONFER_WEB --> NEXT["Next.js 16.0.7"]
+    CONFER_WEB --> REACT["React 19.2.0"]
+    CONFER_WEB --> SUPABASE["@supabase/ssr; @supabase/supabase-js"]
+    CONFER_WEB --> RADIX["Radix UI Components"]
+    CONFER_WEB --> FORM["React Hook Form"]
+    CONFER_WEB --> ZOD["Zod Validation"]
 
-    AUTH --> SUPABASE_PKG[@supabase/ssr<br/>@supabase/supabase-js]
-    AUTH --> NEXT_PKG[Next.js]
+    AUTH --> SUPABASE_PKG["@supabase/ssr; @supabase/supabase-js"]
+    AUTH --> NEXT_PKG["Next.js"]
 
-    DATABASE --> DRIZZLE[Drizzle ORM]
-    DATABASE --> POSTGRES[postgres.js]
+    DATABASE --> DRIZZLE["Drizzle ORM"]
+    DATABASE --> POSTGRES["postgres.js"]
 
     classDef workspace fill:#10b981,stroke:#059669,color:#fff
     classDef external fill:#64748b,stroke:#475569,color:#fff
@@ -213,7 +213,7 @@ sequenceDiagram
     participant AI as "Anthropic API (Claude)"
 
     User->>UI: Fill form & submit
-    UI->>SA: POST /actions/applications<br/>createApplication(data)
+    UI->>SA: POST /actions/applications; createApplication(data)
 
     Note over SA: Server-side validation
     SA->>DB: db.insert(applications).values(...)
@@ -222,15 +222,15 @@ sequenceDiagram
     DB-->>SA: Return typed result
 
     Note over SA: Trigger background workflow
-    SA->>TW: Start underwriting workflow<br/>(via Python client)
+    SA->>TW: Start underwriting workflow (via Python client)
 
     SA-->>UI: Return { success, applicationId }
     UI-->>User: Show confirmation + status
 
     Note over TW: Workflow begins (durable)
-    TW->>TW: Order documents (parallel)<br/>- Credit report<br/>- Appraisal<br/>- Title search
+    TW->>TW: Order documents (parallel): Credit report, Appraisal, Title search
 
-    TW->>LG: Invoke underwriter agent<br/>(langgraph_agent_activity.py)
+    TW->>LG: Invoke underwriter agent (langgraph_agent_activity.py)
 
     Note over LG: AI Decision Engine
     LG->>PG: Read application data
@@ -240,12 +240,12 @@ sequenceDiagram
     LG->>LG: Analyze Collateral (LTV)
     LG->>LG: Analyze Capacity (Reserves)
 
-    LG->>AI: Generate decision<br/>(makeDecision node)
-    AI-->>LG: Return structured decision<br/>{ status, conditions, reasons }
+    LG->>AI: Generate decision (makeDecision node)
+    AI-->>LG: Return structured decision { status, conditions, reasons }
 
     LG-->>TW: Return decision
 
-    TW->>PG: Update application status<br/>& decision_result
+    TW->>PG: Update application status & decision_result
 
     alt Needs Manual Review
         TW->>TW: Wait for approval signal
@@ -255,7 +255,7 @@ sequenceDiagram
         TW->>PG: Update to "approved" or "denied"
     end
 
-    TW->>TW: Send notifications<br/>(Email/SMS)
+    TW->>TW: Send notifications (Email/SMS)
 
     Note over User: User sees updated status in UI
 ```

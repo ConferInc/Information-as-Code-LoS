@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_AppRegistration" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:process id="Process_AppRegistration" name="App Registration Flow" isExecutable="true">
+    
+    <bpmn:startEvent id="Start_InviteClick" name="Invite Link Clicked">
+      <bpmn:outgoing>Flow_StartToEmail</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_VerifyEmail" name="Verify Email (OTP)">
+      <bpmn:documentation>User enters code sent to email.</bpmn:documentation>
+      <bpmn:incoming>Flow_StartToEmail</bpmn:incoming>
+      <bpmn:outgoing>Flow_EmailToPass</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_SetPassword" name="Set Password">
+      <bpmn:incoming>Flow_EmailToPass</bpmn:incoming>
+      <bpmn:outgoing>Flow_PassTo2FA</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Setup2FA" name="Setup 2FA (SMS/Auth)">
+      <bpmn:incoming>Flow_PassTo2FA</bpmn:incoming>
+      <bpmn:outgoing>Flow_2FAToCreate</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_CreateUser" name="Create Supabase User">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-portal-user" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2FAToCreate</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateToLogin</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_LogLogin" name="Log First Login">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="log-audit-event" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_CreateToLogin</bpmn:incoming>
+      <bpmn:outgoing>Flow_LoginToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_Registered" name="Registration Complete">
+      <bpmn:incoming>Flow_LoginToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_StartToEmail" sourceRef="Start_InviteClick" targetRef="Task_VerifyEmail" />
+    <bpmn:sequenceFlow id="Flow_EmailToPass" sourceRef="Task_VerifyEmail" targetRef="Task_SetPassword" />
+    <bpmn:sequenceFlow id="Flow_PassTo2FA" sourceRef="Task_SetPassword" targetRef="Task_Setup2FA" />
+    <bpmn:sequenceFlow id="Flow_2FAToCreate" sourceRef="Task_Setup2FA" targetRef="Task_CreateUser" />
+    <bpmn:sequenceFlow id="Flow_CreateToLogin" sourceRef="Task_CreateUser" targetRef="Task_LogLogin" />
+    <bpmn:sequenceFlow id="Flow_LoginToEnd" sourceRef="Task_LogLogin" targetRef="End_Registered" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Reg">
+    <bpmndi:BPMNPlane id="BPMNPlane_Reg" bpmnElement="Process_AppRegistration">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_InviteClick">
+        <dc:Bounds x="182" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Email_di" bpmnElement="Task_VerifyEmail">
+        <dc:Bounds x="270" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pass_di" bpmnElement="Task_SetPassword">
+        <dc:Bounds x="430" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_2FA_di" bpmnElement="Task_Setup2FA">
+        <dc:Bounds x="590" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Create_di" bpmnElement="Task_CreateUser">
+        <dc:Bounds x="750" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Log_di" bpmnElement="Task_LogLogin">
+        <dc:Bounds x="910" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End_Registered">
+        <dc:Bounds x="1072" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1" bpmnElement="Flow_StartToEmail">
+        <di:waypoint x="218" y="120" />
+        <di:waypoint x="270" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2" bpmnElement="Flow_EmailToPass">
+        <di:waypoint x="370" y="120" />
+        <di:waypoint x="430" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3" bpmnElement="Flow_PassTo2FA">
+        <di:waypoint x="530" y="120" />
+        <di:waypoint x="590" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4" bpmnElement="Flow_2FAToCreate">
+        <di:waypoint x="690" y="120" />
+        <di:waypoint x="750" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5" bpmnElement="Flow_CreateToLogin">
+        <di:waypoint x="850" y="120" />
+        <di:waypoint x="910" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6" bpmnElement="Flow_LoginToEnd">
+        <di:waypoint x="1010" y="120" />
+        <di:waypoint x="1072" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

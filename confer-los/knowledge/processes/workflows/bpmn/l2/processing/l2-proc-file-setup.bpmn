@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_FileSetup" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.43.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:collaboration id="Collaboration_FileSetup">
+    <bpmn:participant id="Participant_ProcessingSetup" name="Processing - File Setup (L2)" processRef="Process_FileSetup" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_FileSetup" name="File Setup Process" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Setup">
+      <bpmn:lane id="Lane_Processor" name="Loan Processor (Human)">
+        <bpmn:flowNodeRef>Task_Scrub1003</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ManualAddress</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VerifyLoanTerms</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Agents" name="System Agents (Automated)">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_USPSValidate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AddressValid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OrderTitle</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OrderFlood</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_SetupComplete</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_1" name="File Received">
+      <bpmn:outgoing>Flow_StartToUSPS</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_USPSValidate" name="USPS Address Validation">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="validate-address-usps" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StartToUSPS</bpmn:incoming>
+      <bpmn:outgoing>Flow_USPSToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_AddressValid" name="Address Valid?">
+      <bpmn:incoming>Flow_USPSToGateway</bpmn:incoming>
+      <bpmn:incoming>Flow_CorrectionToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ValidNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_Scrub1003" name="Scrub 1003 Data">
+      <bpmn:documentation>Review capitalization, SSN, employment dates.</bpmn:documentation>
+      <bpmn:incoming>Flow_ValidYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScrubToTerms</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ManualAddress" name="Manual Address Correction">
+      <bpmn:incoming>Flow_ValidNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_CorrectionToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_OrderTitle" name="Order Title Work">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="order-title-service" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TermsToServices</bpmn:incoming>
+      <bpmn:outgoing>Flow_TitleToFlood</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_OrderFlood" name="Order Flood Cert">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="order-flood-cert" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TitleToFlood</bpmn:incoming>
+      <bpmn:outgoing>Flow_FloodToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_VerifyLoanTerms" name="Verify Loan Terms">
+      <bpmn:documentation>Compare against Lock Confirmation.</bpmn:documentation>
+      <bpmn:incoming>Flow_ScrubToTerms</bpmn:incoming>
+      <bpmn:outgoing>Flow_TermsToServices</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="EndEvent_SetupComplete" name="Setup Complete">
+      <bpmn:incoming>Flow_FloodToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToUSPS" sourceRef="StartEvent_1" targetRef="Task_USPSValidate" />
+    <bpmn:sequenceFlow id="Flow_USPSToGateway" sourceRef="Task_USPSValidate" targetRef="Gateway_AddressValid" />
+    <bpmn:sequenceFlow id="Flow_ValidYes" name="Yes" sourceRef="Gateway_AddressValid" targetRef="Task_Scrub1003" />
+    <bpmn:sequenceFlow id="Flow_ValidNo" name="No/Invalid" sourceRef="Gateway_AddressValid" targetRef="Task_ManualAddress" />
+    <bpmn:sequenceFlow id="Flow_CorrectionToGateway" sourceRef="Task_ManualAddress" targetRef="Gateway_AddressValid" />
+    <bpmn:sequenceFlow id="Flow_ScrubToTerms" sourceRef="Task_Scrub1003" targetRef="Task_VerifyLoanTerms" />
+    <bpmn:sequenceFlow id="Flow_TermsToServices" sourceRef="Task_VerifyLoanTerms" targetRef="Task_OrderTitle" />
+    <bpmn:sequenceFlow id="Flow_TitleToFlood" sourceRef="Task_OrderTitle" targetRef="Task_OrderFlood" />
+    <bpmn:sequenceFlow id="Flow_FloodToEnd" sourceRef="Task_OrderFlood" targetRef="EndEvent_SetupComplete" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_FileSetup">
+      <bpmndi:BPMNShape id="Participant_0x1_di" bpmnElement="Participant_ProcessingSetup" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1061" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agents_di" bpmnElement="Lane_Agents" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="190" y="80" width="1031" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Processor_di" bpmnElement="Lane_Processor" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="280" width="1031" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="252" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="238" y="205" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_USPS_di" bpmnElement="Task_USPSValidate">
+        <dc:Bounds x="340" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Address_di" bpmnElement="Gateway_AddressValid" isMarkerVisible="true">
+        <dc:Bounds x="495" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="484" y="131" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Scrub_di" bpmnElement="Task_Scrub1003">
+        <dc:Bounds x="600" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ManualAddr_di" bpmnElement="Task_ManualAddress">
+        <dc:Bounds x="470" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Title_di" bpmnElement="Task_OrderTitle">
+        <dc:Bounds x="860" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Flood_di" bpmnElement="Task_OrderFlood">
+        <dc:Bounds x="1000" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Terms_di" bpmnElement="Task_VerifyLoanTerms">
+        <dc:Bounds x="730" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_di" bpmnElement="EndEvent_SetupComplete">
+        <dc:Bounds x="1142" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1121" y="205" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToUSPS_di" bpmnElement="Flow_StartToUSPS">
+        <di:waypoint x="288" y="180" />
+        <di:waypoint x="340" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_USPSToGateway_di" bpmnElement="Flow_USPSToGateway">
+        <di:waypoint x="440" y="180" />
+        <di:waypoint x="495" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidYes_di" bpmnElement="Flow_ValidYes">
+        <di:waypoint x="545" y="180" />
+        <di:waypoint x="570" y="180" />
+        <di:waypoint x="570" y="380" />
+        <di:waypoint x="600" y="380" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="561" y="278" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidNo_di" bpmnElement="Flow_ValidNo">
+        <di:waypoint x="520" y="205" />
+        <di:waypoint x="520" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="525" y="260" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CorrectionToGateway_di" bpmnElement="Flow_CorrectionToGateway">
+        <di:waypoint x="470" y="380" />
+        <di:waypoint x="450" y="380" />
+        <di:waypoint x="450" y="180" />
+        <di:waypoint x="495" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ScrubToTerms_di" bpmnElement="Flow_ScrubToTerms">
+        <di:waypoint x="700" y="380" />
+        <di:waypoint x="730" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TermsToServices_di" bpmnElement="Flow_TermsToServices">
+        <di:waypoint x="830" y="380" />
+        <di:waypoint x="845" y="380" />
+        <di:waypoint x="845" y="180" />
+        <di:waypoint x="860" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TitleToFlood_di" bpmnElement="Flow_TitleToFlood">
+        <di:waypoint x="960" y="180" />
+        <di:waypoint x="1000" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FloodToEnd_di" bpmnElement="Flow_FloodToEnd">
+        <di:waypoint x="1100" y="180" />
+        <di:waypoint x="1142" y="180" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

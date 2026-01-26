@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_SalesLeadMgmt" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.43.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.4.0">
+  <bpmn:collaboration id="Collaboration_SalesLead">
+    <bpmn:participant id="Participant_SalesLead" name="Sales &#38; Lead Management (L2)" processRef="Process_SalesLead_L2" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_SalesLead_L2" name="Sales Lead Process" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Sales">
+      <bpmn:lane id="Lane_Advisor" name="Mortgage Advisor (Human)">
+        <bpmn:flowNodeRef>Task_ReviewLead</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ConductDiscovery</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Qualified</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdateJungo</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="System (Web/CRM)">
+        <bpmn:flowNodeRef>StartEvent_WebLead</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendWebConfirm</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SyncToJungo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>StartEvent_ManualLead</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_MergeLeads</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendAppInvite</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_AppSent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NurtureSeq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Nurture</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_WebLead" name="Web Form Submitted">
+      <bpmn:outgoing>Flow_WebToEmail</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_SendWebConfirm" name="Send Confirmation Email">
+      <bpmn:documentation>Confirm submission to borrower.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send-email-template" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_WebToEmail</bpmn:incoming>
+      <bpmn:outgoing>Flow_EmailToSync</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_SyncToJungo" name="Sync Lead to Jungo CRM">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="sync-jungo-crm" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_EmailToSync</bpmn:incoming>
+      <bpmn:outgoing>Flow_SyncToMerge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:startEvent id="StartEvent_ManualLead" name="Manual Lead / Referral">
+      <bpmn:outgoing>Flow_ManualToMerge</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="Gateway_MergeLeads" name="Lead Created">
+      <bpmn:incoming>Flow_SyncToMerge</bpmn:incoming>
+      <bpmn:incoming>Flow_ManualToMerge</bpmn:incoming>
+      <bpmn:outgoing>Flow_MergeToReview</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ReviewLead" name="Review Lead in Jungo">
+      <bpmn:incoming>Flow_MergeToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToCall</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ConductDiscovery" name="Conduct Discovery Call (Zoom)">
+      <bpmn:documentation>Explain 2-2-2 docs and value prop.</bpmn:documentation>
+      <bpmn:incoming>Flow_ReviewToCall</bpmn:incoming>
+      <bpmn:outgoing>Flow_CallToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Qualified" name="Lead Qualified?">
+      <bpmn:incoming>Flow_CallToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_QualYes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_QualNo</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_UpdateJungo" name="Update Status &#39;App Sent&#39;">
+      <bpmn:incoming>Flow_QualYes</bpmn:incoming>
+      <bpmn:outgoing>Flow_UpdateToInvite</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_SendAppInvite" name="Email Application Invite">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send-app-invite" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_UpdateToInvite</bpmn:incoming>
+      <bpmn:outgoing>Flow_InviteToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_AppSent" name="Application Process Started">
+      <bpmn:incoming>Flow_InviteToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Task_NurtureSeq" name="Start Nurture Campaign">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="start-nurture-campaign" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_QualNo</bpmn:incoming>
+      <bpmn:outgoing>Flow_NurtureToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_Nurture" name="Lead Nurtured">
+      <bpmn:incoming>Flow_NurtureToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_WebToEmail" sourceRef="StartEvent_WebLead" targetRef="Task_SendWebConfirm" />
+    <bpmn:sequenceFlow id="Flow_EmailToSync" sourceRef="Task_SendWebConfirm" targetRef="Task_SyncToJungo" />
+    <bpmn:sequenceFlow id="Flow_SyncToMerge" sourceRef="Task_SyncToJungo" targetRef="Gateway_MergeLeads" />
+    <bpmn:sequenceFlow id="Flow_ManualToMerge" sourceRef="StartEvent_ManualLead" targetRef="Gateway_MergeLeads" />
+    <bpmn:sequenceFlow id="Flow_MergeToReview" sourceRef="Gateway_MergeLeads" targetRef="Task_ReviewLead" />
+    <bpmn:sequenceFlow id="Flow_ReviewToCall" sourceRef="Task_ReviewLead" targetRef="Task_ConductDiscovery" />
+    <bpmn:sequenceFlow id="Flow_CallToGateway" sourceRef="Task_ConductDiscovery" targetRef="Gateway_Qualified" />
+    <bpmn:sequenceFlow id="Flow_QualYes" name="Yes" sourceRef="Gateway_Qualified" targetRef="Task_UpdateJungo" />
+    <bpmn:sequenceFlow id="Flow_QualNo" name="No" sourceRef="Gateway_Qualified" targetRef="Task_NurtureSeq" />
+    <bpmn:sequenceFlow id="Flow_UpdateToInvite" sourceRef="Task_UpdateJungo" targetRef="Task_SendAppInvite" />
+    <bpmn:sequenceFlow id="Flow_InviteToEnd" sourceRef="Task_SendAppInvite" targetRef="EndEvent_AppSent" />
+    <bpmn:sequenceFlow id="Flow_NurtureToEnd" sourceRef="Task_NurtureSeq" targetRef="EndEvent_Nurture" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SalesLead">
+    <bpmndi:BPMNPlane id="BPMNPlane_SalesLead" bpmnElement="Collaboration_SalesLead">
+      <bpmndi:BPMNShape id="Participant_Sales_di" bpmnElement="Participant_SalesLead" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1400" height="443" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true" bioc:stroke="#43a047" bioc:fill="#c8e6c9">
+        <dc:Bounds x="190" y="280" width="1370" height="243" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Advisor_di" bpmnElement="Lane_Advisor" isHorizontal="true" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2">
+        <dc:Bounds x="190" y="80" width="1370" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartWeb_di" bpmnElement="StartEvent_WebLead">
+        <dc:Bounds x="240" y="360" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Email_di" bpmnElement="Task_SendWebConfirm">
+        <dc:Bounds x="320" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Sync_di" bpmnElement="Task_SyncToJungo">
+        <dc:Bounds x="460" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartMan_di" bpmnElement="StartEvent_ManualLead">
+        <dc:Bounds x="240" y="440" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_Merge_di" bpmnElement="Gateway_MergeLeads" isMarkerVisible="true">
+        <dc:Bounds x="600" y="355" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Rev_di" bpmnElement="Task_ReviewLead">
+        <dc:Bounds x="680" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Disc_di" bpmnElement="Task_ConductDiscovery">
+        <dc:Bounds x="820" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_Qual_di" bpmnElement="Gateway_Qualified" isMarkerVisible="true">
+        <dc:Bounds x="960" y="155" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Upd_di" bpmnElement="Task_UpdateJungo">
+        <dc:Bounds x="1060" y="140" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Inv_di" bpmnElement="Task_SendAppInvite">
+        <dc:Bounds x="1200" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_App_di" bpmnElement="EndEvent_AppSent">
+        <dc:Bounds x="1350" y="362" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Nur_di" bpmnElement="Task_NurtureSeq">
+        <dc:Bounds x="1060" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Nur_di" bpmnElement="EndEvent_Nurture">
+        <dc:Bounds x="1350" y="440" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_WebToEmail_di" bpmnElement="Flow_WebToEmail">
+        <di:waypoint x="276" y="378" />
+        <di:waypoint x="320" y="378" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EmailToSync_di" bpmnElement="Flow_EmailToSync">
+        <di:waypoint x="420" y="380" />
+        <di:waypoint x="460" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SyncToMerge_di" bpmnElement="Flow_SyncToMerge">
+        <di:waypoint x="560" y="380" />
+        <di:waypoint x="600" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManualToMerge_di" bpmnElement="Flow_ManualToMerge">
+        <di:waypoint x="276" y="458" />
+        <di:waypoint x="625" y="458" />
+        <di:waypoint x="625" y="405" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_MergeToReview_di" bpmnElement="Flow_MergeToReview">
+        <di:waypoint x="650" y="380" />
+        <di:waypoint x="665" y="380" />
+        <di:waypoint x="665" y="180" />
+        <di:waypoint x="680" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToCall_di" bpmnElement="Flow_ReviewToCall">
+        <di:waypoint x="780" y="180" />
+        <di:waypoint x="820" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CallToGateway_di" bpmnElement="Flow_CallToGateway">
+        <di:waypoint x="920" y="180" />
+        <di:waypoint x="960" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QualYes_di" bpmnElement="Flow_QualYes">
+        <di:waypoint x="1010" y="180" />
+        <di:waypoint x="1060" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QualNo_di" bpmnElement="Flow_QualNo">
+        <di:waypoint x="985" y="205" />
+        <di:waypoint x="985" y="380" />
+        <di:waypoint x="1060" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateToInvite_di" bpmnElement="Flow_UpdateToInvite">
+        <di:waypoint x="1160" y="180" />
+        <di:waypoint x="1180" y="180" />
+        <di:waypoint x="1180" y="380" />
+        <di:waypoint x="1200" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_InviteToEnd_di" bpmnElement="Flow_InviteToEnd">
+        <di:waypoint x="1300" y="380" />
+        <di:waypoint x="1350" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NurtureToEnd_di" bpmnElement="Flow_NurtureToEnd">
+        <di:waypoint x="1110" y="420" />
+        <di:waypoint x="1110" y="458" />
+        <di:waypoint x="1350" y="458" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

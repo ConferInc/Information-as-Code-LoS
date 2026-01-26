@@ -1,0 +1,1185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_ApplicationL2" targetNamespace="https://confersolutions.ai/bpmn/l2/application" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:collaboration id="Collaboration_Application">
+    <bpmn:participant id="Participant_Application" name="Application Wizard - URLA 1003 (L2 Detail)" processRef="Process_Application_L2" />
+    <bpmn:textAnnotation id="Note_URLASections">
+      <bpmn:text>URLA 1003 SECTIONS MAPPED TO WIZARD
+
+Step 1: Loan &amp; Property → Section 4 (Loan/Property)
+Step 2: Borrower Info → Section 1a (Personal Info)
+Step 3: Residence → Section 1b (Current/Prior Address)
+Step 4: Employment → Section 1c (Employment/Income)
+Step 5: Assets → Section 2a (Assets)
+Step 6: Liabilities → Section 2b (Liabilities)
+Step 7: REO → Section 3 (Real Estate Owned)
+Step 8: Declarations → Section 5 (Yes/No Questions)
+Step 9: Review → Section 6 (Attestation)
+
+Research: docs/research/synthesized/urla-1003-field-analysis.md</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_SmartValidation">
+      <bpmn:text>SMART VALIDATION APPROACH
+
+Philosophy: Guide, don't gate. Agentic and adaptive.
+
+CRITICAL (Block): SSN="ABCD", Email without @, Invalid date
+WARN (Allow Submit): Middle name missing, minor gaps
+INFORM (No Block): Unusual values, suggestions only
+
+Loan officer handles minor gaps in Processing phase.
+Don't frustrate borrowers with rigid validation.
+
+Reference: docs/research/synthesized/urla-1003-field-analysis.md</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_PostSubmit">
+      <bpmn:text>ON SUBMIT - INSTANT UX
+
+1. IMMEDIATE (parallel, user sees instantly):
+   - Display Confirmation screen (B-10)
+   - Send Acknowledgment Email (async)
+
+   User sees success, can close browser.
+
+2. ASYNC BACKEND (user doesn't wait):
+   - Pull Credit Report
+   - Validate Property
+   - Assign Loan Officer
+   - Generate Document Checklist
+
+   Runs in background (e.g., 2am submission).
+
+3. LATER: Send detailed email with LO contact
+
+AUTO-SAVE: Runs continuously on every field change.
+Debounced 2s. Not shown as explicit flow step.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Note_Evidence">
+      <bpmn:text>GROUNDING DOCUMENTS
+
+- WF-03: borrower-portal-workflows.md (lines 269-402)
+- B-01 to B-10: borrower-portal-wireframes.md
+- URLA Analysis: synthesized/urla-1003-field-analysis.md
+- Multi-Borrower: synthesized/multi-borrower-analysis.md
+- MISMO: synthesized/mismo-compliance-requirements.md
+- Terminology: glossary-mortgage-terms.md
+
+IMPORTANT: Application submission ≠ Pre-Approval
+Pre-Approval requires underwriting review.</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Application_L2" name="Application Wizard - L2 Detailed Process (URLA 1003)" isExecutable="false">
+    <bpmn:documentation>
+CONFER LOAN ORIGINATION SYSTEM - L2 APPLICATION WIZARD PROCESS
+
+PURPOSE: Detailed breakdown of the Application phase showing all 9 wizard steps,
+post-submit parallel processing, and async backend services. This is the L2 expansion
+of the L1 "Complete Application" task.
+
+AUDIENCE: Process designers, loan officers, processors, UI/UX designers, developers.
+
+PARENT: L1 Task "Complete Application" (to be created)
+GRANDPARENT: L0 Task "Application" (Task_Application)
+
+KEY CHARACTERISTICS:
+- User MUST be logged in (comes from Registration WF-01)
+- Complete URLA 1003 form collection (9 wizard steps)
+- AUTO-SAVE on every field change (debounced 2s) - continuous background process
+- Resume at exact position (step + scroll)
+- Credit authorization collected in Step 2, but pull happens POST-SUBMIT
+- Multi-borrower support via WF-04/WF-05 (up to 8 borrowers per MISMO)
+
+ON SUBMIT FLOW:
+1. IMMEDIATE (parallel, instant UX):
+   - Display Confirmation screen to borrower
+   - Send Acknowledgment email (async, non-blocking)
+
+2. ASYNC BACKEND (borrower doesn't wait):
+   - Credit pull, property validation, LO assignment, doc checklist
+   - Can happen at 2am if borrower submitted then
+
+3. LATER: Send detailed confirmation with LO contact
+
+USER JOURNEY ENDS AT CONFIRMATION SCREEN.
+Backend processing continues asynchronously.
+
+URLA 1003 SECTIONS (per synthesized/urla-1003-field-analysis.md):
+- Section 1: Borrower Information (Steps 2-4)
+- Section 2: Financial Information - Assets/Liabilities (Steps 5-6)
+- Section 3: Real Estate Owned (Step 7)
+- Section 4: Loan and Property Information (Step 1)
+- Section 5: Declarations (Step 8)
+- Section 6: Acknowledgments and Agreements (Step 9)
+- Section 7: Military Service (optional, in Step 2 if applicable)
+- Section 8: Demographics (optional, in Step 9)
+
+STATUS TRANSITIONS:
+- (none) → draft: When user enters Step 1
+- draft → submitted: When user clicks Submit
+- submitted → in_review: After async processing completes
+
+DOWNSTREAM: Leads to Processing (L2 Processing diagrams)
+
+SPEC REFERENCE: WF-03 in docs/specs/borrower-portal-workflows.md
+RESEARCH: docs/research/synthesized/urla-1003-field-analysis.md
+
+L2 DETAIL LEVEL:
+This diagram shows ALL major business tasks, customer actions, role-specific actions,
+communications (emails), and business handoffs. It does NOT show system implementation
+details like API calls or database operations (those would be L3).
+    </bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Application">
+      <bpmn:lane id="Lane_Borrower" name="Borrower (Authenticated)">
+        <bpmn:documentation>
+ACTOR: Borrower (Primary Applicant)
+
+An authenticated user completing the mortgage application.
+Must have account from Registration (WF-01).
+
+CHARACTERISTICS:
+- Has email/password account
+- Pre-qual data may be pre-filled
+- Can save and resume at any point (auto-save is continuous)
+- Can add co-borrowers (WF-04) - up to 8 borrowers supported
+- Completes all 9 steps before submitting
+- Sees confirmation screen IMMEDIATELY on submit
+- Can close browser after confirmation - backend continues async
+
+UI: Borrower Portal - Application Wizard (B-01 to B-10)
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Start_Application</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_LoanProperty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_BorrowerInfo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AddCoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ResidenceHistory</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EmploymentIncome</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Assets</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Liabilities</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RealEstateOwned</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Declarations</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewAttest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SubmitApplication</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_BorrowerDone</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Portal" name="Borrower Portal (Frontend)">
+        <bpmn:documentation>
+SYSTEM: Borrower Portal Frontend
+
+React/Next.js application serving the application wizard.
+
+RESPONSIBILITIES:
+- Render 9-step wizard (B-01 to B-10)
+- Client-side validation (smart: critical/warn/inform)
+- AUTO-SAVE on field changes (debounced 2s) - continuous background
+- Track wizard progress and enable resume
+- Display confirmation page IMMEDIATELY on submit
+
+AUTO-SAVE BEHAVIOR (L2 detail, noted here):
+- Runs as background process on every field change
+- Debounced 2 seconds to avoid excessive API calls
+- Saves current step, scroll position, all field values
+- Not shown as explicit flow step - it's continuous
+
+SCREENS: B-01 through B-10 in borrower-portal-wireframes.md
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>Task_DisplayConfirmation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Fork</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Services" name="Backend Services (Microservices)">
+        <bpmn:documentation>
+SYSTEM: Backend Microservices
+
+Enterprise-ready service layer handling business logic.
+
+ON SUBMIT - INSTANT (parallel):
+1. Display Confirmation to borrower (instant)
+2. Send Acknowledgment Email (async, non-blocking)
+
+ASYNC BACKEND (borrower doesn't wait):
+- CreditBureauService - Tri-merge hard credit pull
+- PropertyValidationService - Address standardization
+- LoanOfficerAssignmentService - Assign LO
+- DocumentChecklistService - Generate required docs
+
+LATER (after async processing):
+- Send detailed confirmation with LO contact
+
+WHY THIS DESIGN:
+- Instant UX: Borrower sees confirmation immediately
+- Non-blocking: Email sent async, doesn't delay UI
+- Background processing: Can happen at any time
+- Detailed follow-up: Sent when all data ready
+
+REFERENCE: docs/specs/borrower-portal-workflows.md (WF-03)
+        </bpmn:documentation>
+        <bpmn:flowNodeRef>CallActivity_CoBorrower</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ImmediateParallel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendAcknowledgment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ImmediateJoin</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PullCredit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ValidateProperty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GenerateDocChecklist</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AssignLO</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AsyncStart</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AsyncEnd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendDetailedConfirmation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ToProcessing</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Application" name="Start Application">
+      <bpmn:documentation>
+TRIGGER: User navigates to application wizard after Registration
+
+ENTRY POINTS:
+- After Registration (WF-01) completion
+- Resume draft application from dashboard
+- "Start My Application" from Pre-Qualification results
+
+PRE-CONDITIONS:
+- User is authenticated (has account)
+- Session contains auth token
+
+DATA PRE-FILL:
+If coming from Pre-Qualification:
+- Loan purpose, property zip, estimated value
+- Down payment, credit score range, income
+
+SPEC: WF-03 Step 1
+      </bpmn:documentation>
+      <bpmn:outgoing>Flow_StartToLoanProperty</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_LoanProperty" name="Step 1: Loan &#38; Property">
+      <bpmn:documentation>
+TASK: Enter Loan and Property Information
+ACTOR: Borrower
+UI: B-01 (/apply/loan-property)
+URLA: Section 4
+
+USER ACTION:
+Enter loan and property details
+
+FORM FIELDS (per urla-1003-field-analysis.md Section 4):
+- Loan Amount: Currency (required)
+- Loan Purpose: Purchase / Refinance / Other (required)
+- Property Address: Street, City, State, Zip (required)
+- Property Value: Currency (required)
+- Occupancy: Primary Residence, Second Home, Investment (required)
+- FHA Secondary Residence: Boolean (if applicable)
+- Mixed-Use Property: Yes/No (required)
+- Manufactured Home: Yes/No (required)
+
+SECTION 4b - OTHER MORTGAGES (conditional):
+If other mortgages exist on subject property:
+- Creditor Name, Lien Type, Monthly Payment, Loan Amount
+
+SECTION 4c - RENTAL INCOME (purchase only):
+- Expected Monthly Rental Income
+
+SECTION 4d - GIFTS/GRANTS:
+- Asset Type, Source, Amount
+
+VALIDATION:
+- Critical: Property address format, loan amount positive
+- Warn: Missing unit number for multi-unit
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+DATABASE MAPPING:
+- applications.loan_amount
+- applications.occupancy_type
+- properties.address (JSONB)
+- properties.property_type
+
+SPEC: WF-03 Step 2, B-01
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_StartToLoanProperty</bpmn:incoming>
+      <bpmn:outgoing>Flow_LoanPropertyToBorrower</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_BorrowerInfo" name="Step 2: Borrower Info">
+      <bpmn:documentation>
+TASK: Enter Borrower Personal Information
+ACTOR: Borrower
+UI: B-02 (/apply/borrower-info)
+URLA: Section 1a
+
+USER ACTION:
+Enter personal information, authorize credit, decide on co-borrower
+
+FORM FIELDS (per urla-1003-field-analysis.md Section 1a):
+- First Name, Middle Name, Last Name, Suffix (required except middle)
+- Alternate Names (for credit matching)
+- Social Security Number: 9 digits (required)
+- Date of Birth (required)
+- Citizenship Status (required)
+- Type of Credit: Individual or Joint (required)
+- Marital Status (required)
+- Dependents: Number, Ages
+- Contact Info: Phones, Email (required)
+
+CREDIT AUTHORIZATION:
+- Checkbox: "I authorize [Lender] to obtain my credit report"
+- Consent COLLECTED here, actual pull happens POST-SUBMIT
+
+CO-BORROWER PROMPT:
+"Will anyone else be on this loan?"
+- Yes → Trigger WF-04, No → Continue
+
+MULTI-BORROWER: Up to 8 borrowers supported
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 3, B-02
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_LoanPropertyToBorrower</bpmn:incoming>
+      <bpmn:outgoing>Flow_BorrowerToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_AddCoBorrower" name="Add Co-Borrower?">
+      <bpmn:documentation>
+DECISION: Did borrower indicate they want to add a co-borrower?
+
+OUTCOMES:
+- YES: Trigger co-borrower subprocess (WF-04)
+- NO: Continue to Residence History
+
+SPEC: WF-03 line 294, WF-04
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_BorrowerToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_YesCoBorrower</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NoCoBorrower</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:callActivity id="CallActivity_CoBorrower" name="Add Co-Borrower (WF-04)">
+      <bpmn:documentation>
+SUBPROCESS: Add Co-Borrower
+REFERENCE: WF-04 in borrower-portal-workflows.md
+
+This call activity expands to L2-AddCoBorrower subprocess.
+Supports up to 8 borrowers per application.
+
+OPTIONS:
+1. Manual Entry: Primary enters co-borrower info inline
+2. Email Invitation: Co-borrower completes independently
+
+RETURNS: When co-borrower flow complete or skipped
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_YesCoBorrower</bpmn:incoming>
+      <bpmn:outgoing>Flow_CoBorrowerToResidence</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:userTask id="Task_ResidenceHistory" name="Step 3: Residence History">
+      <bpmn:documentation>
+TASK: Enter Residence History
+ACTOR: Borrower
+UI: B-03 (/apply/residence)
+URLA: Section 1b
+
+USER ACTION:
+Enter current and prior addresses (2-year history required)
+
+FORM FIELDS: Address, Duration, Housing Status, Monthly Rent
+
+CONDITIONAL LOGIC:
+If duration at current &lt; 2 years → Show Previous Address
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 5, B-03
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_NoCoBorrower</bpmn:incoming>
+      <bpmn:incoming>Flow_CoBorrowerToResidence</bpmn:incoming>
+      <bpmn:outgoing>Flow_ResidenceToEmployment</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_EmploymentIncome" name="Step 4: Employment &#38; Income">
+      <bpmn:documentation>
+TASK: Enter Employment and Income Information
+ACTOR: Borrower
+UI: B-04 (/apply/employment)
+URLA: Section 1c, 1d, 1e
+
+USER ACTION:
+Enter current and prior employment (2-year history required)
+
+FORM FIELDS: Employer, Position, Start Date, Income breakdown
+
+CONDITIONAL LOGIC:
+If duration at current employer &lt; 2 years → Show Previous Employer
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 6, B-04
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ResidenceToEmployment</bpmn:incoming>
+      <bpmn:outgoing>Flow_EmploymentToAssets</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Assets" name="Step 5: Assets">
+      <bpmn:documentation>
+TASK: Enter Asset Information
+ACTOR: Borrower
+UI: B-05 (/apply/assets)
+URLA: Section 2a, 2b
+
+USER ACTION:
+Enter financial assets
+
+FORM FIELDS: Account Type, Institution, Account Number, Value
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 7, B-05
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_EmploymentToAssets</bpmn:incoming>
+      <bpmn:outgoing>Flow_AssetsToLiabilities</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Liabilities" name="Step 6: Liabilities">
+      <bpmn:documentation>
+TASK: Enter Liability Information
+ACTOR: Borrower
+UI: B-06 (/apply/liabilities)
+URLA: Section 2c, 2d
+
+USER ACTION:
+Enter debts and liabilities (self-reported, reconciled with credit report in Processing)
+
+FORM FIELDS: Account Type, Creditor, Balance, Monthly Payment
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 8, B-06
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AssetsToLiabilities</bpmn:incoming>
+      <bpmn:outgoing>Flow_LiabilitiesToREO</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_RealEstateOwned" name="Step 7: Real Estate Owned">
+      <bpmn:documentation>
+TASK: Enter Real Estate Owned (REO)
+ACTOR: Borrower
+UI: B-07 (/apply/real-estate)
+URLA: Section 3
+
+USER ACTION:
+Enter other properties owned (besides subject property)
+
+INITIAL QUESTION:
+"I do not own any real estate" checkbox → Skip if checked
+
+FORM FIELDS: Property Address, Value, Status, Mortgage Details, Rental Income
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 9, B-07
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_LiabilitiesToREO</bpmn:incoming>
+      <bpmn:outgoing>Flow_REOToDeclarations</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Declarations" name="Step 8: Declarations">
+      <bpmn:documentation>
+TASK: Complete URLA Section 5 Declarations
+ACTOR: Borrower
+UI: B-08 (/apply/declarations)
+URLA: Section 5
+
+USER ACTION:
+Answer 13 yes/no declaration questions with conditional follow-ups
+
+FORM FIELDS: 13 Yes/No questions, follow-up fields where applicable
+
+MULTI-BORROWER: Each borrower completes their own Section 5
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 10, B-08
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_REOToDeclarations</bpmn:incoming>
+      <bpmn:outgoing>Flow_DeclarationsToReview</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReviewAttest" name="Step 9: Review &#38; Attest">
+      <bpmn:documentation>
+TASK: Review Application and Sign Attestation
+ACTOR: Borrower
+UI: B-09 (/apply/review)
+URLA: Section 6 (Acknowledgments), Section 8 (Demographics)
+
+USER ACTION:
+1. Review all entered data (read-only summary)
+2. Edit if needed
+3. Complete optional demographics (Section 8)
+4. Check attestation checkbox
+5. Click "Submit Application"
+
+AUTO-SAVE: Runs continuously on every field change (debounced 2s)
+
+SPEC: WF-03 Step 11, B-09
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DeclarationsToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToSubmit</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_SubmitApplication" name="Submit Application">
+      <bpmn:documentation>
+TASK: Submit Application
+ACTOR: Borrower
+UI: B-09 (Submit button)
+
+USER ACTION:
+Click "Submit Application" button
+
+PRE-CONDITIONS:
+- All critical validations passed
+- Attestation checked, E-signature provided
+- Credit authorization checked (from Step 2)
+
+WHAT HAPPENS ON CLICK:
+1. Final validation check
+2. If errors: Block, show errors
+3. If OK: IMMEDIATELY (parallel):
+   a. Display Confirmation screen (B-10)
+   b. Send Acknowledgment email (async)
+4. User sees confirmation, can close browser
+5. Backend processing starts ASYNC (doesn't block user)
+
+POST-SUBMIT:
+- Status: draft → submitted
+- User: View-only mode
+- Backend: Async processing begins
+
+SPEC: WF-03 Step 12
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ReviewToSubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitToImmediateParallel</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:parallelGateway id="Gateway_ImmediateParallel" name="Immediate Actions">
+      <bpmn:documentation>
+PARALLEL GATEWAY: Immediate Post-Submit Actions
+
+On submit click, these happen SIMULTANEOUSLY:
+1. Display Confirmation screen to borrower (instant UX)
+2. Send Acknowledgment email (async, non-blocking)
+
+User sees confirmation immediately.
+Email is sent in background.
+
+IMPORTANT: This is instant - borrower doesn't wait.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_SubmitToImmediateParallel</bpmn:incoming>
+      <bpmn:outgoing>Flow_ImmediateToDisplay</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ImmediateToEmail</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_DisplayConfirmation" name="Display Confirmation">
+      <bpmn:documentation>
+TASK: Display Confirmation Page
+SYSTEM: Borrower Portal (Frontend)
+UI: B-10 (/apply/confirmation)
+
+PURPOSE:
+Show INSTANT confirmation to borrower after clicking Submit.
+This appears IMMEDIATELY - no waiting for backend processing.
+
+TIMING: Instant (milliseconds)
+
+DISPLAY CONTENT:
+- Success message: "Your application has been submitted!"
+- Application ID / Reference number
+- "We're processing your application"
+- "You'll receive an email with your Loan Officer contact"
+- "Go to Dashboard" button
+- "Upload Documents" button (optional early start)
+
+USER CAN:
+- Close browser (backend continues async)
+- Go to dashboard
+- Start uploading documents
+
+SPEC: WF-03 Step 13, B-10
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ImmediateToDisplay</bpmn:incoming>
+      <bpmn:outgoing>Flow_DisplayToJoin</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_SendAcknowledgment" name="Send Acknowledgment Email">
+      <bpmn:documentation>
+TASK: Send Acknowledgment Email
+SERVICE: NotificationService.sendAcknowledgment()
+
+PURPOSE:
+Send email confirming receipt of application.
+Runs ASYNC - doesn't block the UI.
+
+TIMING: Async (within seconds, but non-blocking)
+
+EMAIL CONTENT:
+- Subject: "We've Received Your Application - [App #]"
+- Thank you message
+- Application reference number
+- "We're processing your application"
+- "You'll hear from us within 24-48 hours"
+- Support contact
+
+TEMPLATE: application_acknowledgment
+
+DATABASE:
+- Log in notification_logs table
+- Update applications.acknowledgment_sent_at
+
+NOTE: This runs parallel with Display Confirmation.
+Borrower sees screen while email is being sent.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ImmediateToEmail</bpmn:incoming>
+      <bpmn:outgoing>Flow_EmailToJoin</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="Gateway_ImmediateJoin" name="Immediate Done">
+      <bpmn:documentation>
+PARALLEL GATEWAY: Immediate Actions Complete
+
+Both immediate actions done:
+1. Confirmation screen displayed
+2. Acknowledgment email sent
+
+Borrower sees success - their journey is essentially complete.
+Now fork to: (1) Borrower End, (2) Async Backend Processing
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DisplayToJoin</bpmn:incoming>
+      <bpmn:incoming>Flow_EmailToJoin</bpmn:incoming>
+      <bpmn:outgoing>Flow_JoinToFork</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:parallelGateway id="Gateway_Fork" name="Fork Borrower/Backend">
+      <bpmn:documentation>
+PARALLEL GATEWAY: Fork to Two Independent Paths
+
+After immediate actions complete, two INDEPENDENT paths:
+1. Borrower Done - User's journey ends, can close browser
+2. Async Backend - System processes in background
+
+These are truly independent - borrower doesn't wait for backend.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_JoinToFork</bpmn:incoming>
+      <bpmn:outgoing>Flow_ForkToBorrowerEnd</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ForkToAsyncStart</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:endEvent id="End_BorrowerDone" name="Borrower Done">
+      <bpmn:documentation>
+END: Borrower's Application Journey Complete
+
+The borrower has:
+- Completed all 9 wizard steps
+- Clicked Submit
+- Seen confirmation screen
+- Received acknowledgment email
+
+They can now:
+- Close browser (backend continues)
+- Go to dashboard
+- Start uploading documents
+
+Their status: submitted
+Next interaction: Receive detailed email with LO contact
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ForkToBorrowerEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToLoanProperty" sourceRef="Start_Application" targetRef="Task_LoanProperty" />
+    <bpmn:sequenceFlow id="Flow_LoanPropertyToBorrower" sourceRef="Task_LoanProperty" targetRef="Task_BorrowerInfo" />
+    <bpmn:sequenceFlow id="Flow_BorrowerToGateway" sourceRef="Task_BorrowerInfo" targetRef="Gateway_AddCoBorrower" />
+    <bpmn:sequenceFlow id="Flow_YesCoBorrower" name="Yes" sourceRef="Gateway_AddCoBorrower" targetRef="CallActivity_CoBorrower" />
+    <bpmn:sequenceFlow id="Flow_NoCoBorrower" name="No" sourceRef="Gateway_AddCoBorrower" targetRef="Task_ResidenceHistory" />
+    <bpmn:sequenceFlow id="Flow_CoBorrowerToResidence" sourceRef="CallActivity_CoBorrower" targetRef="Task_ResidenceHistory" />
+    <bpmn:sequenceFlow id="Flow_ResidenceToEmployment" sourceRef="Task_ResidenceHistory" targetRef="Task_EmploymentIncome" />
+    <bpmn:sequenceFlow id="Flow_EmploymentToAssets" sourceRef="Task_EmploymentIncome" targetRef="Task_Assets" />
+    <bpmn:sequenceFlow id="Flow_AssetsToLiabilities" sourceRef="Task_Assets" targetRef="Task_Liabilities" />
+    <bpmn:sequenceFlow id="Flow_LiabilitiesToREO" sourceRef="Task_Liabilities" targetRef="Task_RealEstateOwned" />
+    <bpmn:sequenceFlow id="Flow_REOToDeclarations" sourceRef="Task_RealEstateOwned" targetRef="Task_Declarations" />
+    <bpmn:sequenceFlow id="Flow_DeclarationsToReview" sourceRef="Task_Declarations" targetRef="Task_ReviewAttest" />
+    <bpmn:sequenceFlow id="Flow_ReviewToSubmit" sourceRef="Task_ReviewAttest" targetRef="Task_SubmitApplication" />
+    <bpmn:sequenceFlow id="Flow_SubmitToImmediateParallel" sourceRef="Task_SubmitApplication" targetRef="Gateway_ImmediateParallel" />
+    <bpmn:sequenceFlow id="Flow_ImmediateToDisplay" sourceRef="Gateway_ImmediateParallel" targetRef="Task_DisplayConfirmation" />
+    <bpmn:sequenceFlow id="Flow_ImmediateToEmail" sourceRef="Gateway_ImmediateParallel" targetRef="Task_SendAcknowledgment" />
+    <bpmn:sequenceFlow id="Flow_DisplayToJoin" sourceRef="Task_DisplayConfirmation" targetRef="Gateway_ImmediateJoin" />
+    <bpmn:sequenceFlow id="Flow_EmailToJoin" sourceRef="Task_SendAcknowledgment" targetRef="Gateway_ImmediateJoin" />
+    <bpmn:sequenceFlow id="Flow_JoinToFork" sourceRef="Gateway_ImmediateJoin" targetRef="Gateway_Fork" />
+    <bpmn:sequenceFlow id="Flow_ForkToBorrowerEnd" sourceRef="Gateway_Fork" targetRef="End_BorrowerDone" />
+    <bpmn:sequenceFlow id="Flow_ForkToAsyncStart" sourceRef="Gateway_Fork" targetRef="Task_PullCredit" />
+    <bpmn:sequenceFlow id="Flow_AsyncToCredit" sourceRef="Gateway_AsyncStart" targetRef="Task_PullCredit" />
+    <bpmn:sequenceFlow id="Flow_AsyncToProperty" sourceRef="Gateway_AsyncStart" targetRef="Task_ValidateProperty" />
+    <bpmn:sequenceFlow id="Flow_AsyncToLO" sourceRef="Gateway_AsyncStart" targetRef="Task_AssignLO" />
+    <bpmn:sequenceFlow id="Flow_AsyncToDocs" sourceRef="Gateway_AsyncStart" targetRef="Task_GenerateDocChecklist" />
+    <bpmn:sequenceFlow id="Flow_CreditToAsyncEnd" sourceRef="Task_PullCredit" targetRef="Gateway_AsyncEnd" />
+    <bpmn:sequenceFlow id="Flow_PropertyToAsyncEnd" sourceRef="Task_ValidateProperty" targetRef="Gateway_AsyncEnd" />
+    <bpmn:sequenceFlow id="Flow_LOToAsyncEnd" sourceRef="Task_AssignLO" targetRef="Gateway_AsyncEnd" />
+    <bpmn:sequenceFlow id="Flow_DocsToAsyncEnd" sourceRef="Task_GenerateDocChecklist" targetRef="Gateway_AsyncEnd" />
+    <bpmn:sequenceFlow id="Flow_AsyncEndToDetailedConfirm" sourceRef="Gateway_AsyncEnd" targetRef="Task_SendDetailedConfirmation" />
+    <bpmn:sequenceFlow id="Flow_1b3c6r2" sourceRef="Task_PullCredit" targetRef="Gateway_AsyncStart" />
+    <bpmn:serviceTask id="Task_PullCredit" name="Pull Credit Report">
+      <bpmn:documentation>
+TASK: Pull Credit Report
+SERVICE: CreditBureauService.pullCredit()
+
+PURPOSE: Retrieve tri-merge credit report for borrower(s)
+
+TIMING: Async (borrower doesn't wait)
+
+INPUT: Borrower SSN, Name, DOB, Address
+
+OUTPUT: Credit scores, tradelines, liabilities
+
+COMPLIANCE: FCRA, authorization collected in Step 2
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AsyncToCredit</bpmn:incoming>
+      <bpmn:incoming>Flow_ForkToAsyncStart</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreditToAsyncEnd</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1b3c6r2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_DetailedConfirmToEnd" sourceRef="Task_SendDetailedConfirmation" targetRef="End_ToProcessing" />
+    <bpmn:serviceTask id="Task_ValidateProperty" name="Validate Property">
+      <bpmn:documentation>
+TASK: Validate Property
+SERVICE: PropertyValidationService.validateAddress()
+
+PURPOSE: Standardize and validate subject property address
+
+TIMING: Async (borrower doesn't wait)
+
+PROCESSING:
+1. Standardize format (USPS/SmartyStreets)
+2. Validate property exists
+3. Lookup county, FIPS, flood zone
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AsyncToProperty</bpmn:incoming>
+      <bpmn:outgoing>Flow_PropertyToAsyncEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_GenerateDocChecklist" name="Generate Doc Checklist">
+      <bpmn:documentation>
+TASK: Generate Document Checklist
+SERVICE: DocumentChecklistService.generateChecklist()
+
+PURPOSE: Create personalized document list based on borrower profile
+
+TIMING: Async (borrower doesn't wait)
+
+LOGIC:
+- W-2: Pay stubs, W-2s, bank statements
+- Self-employed: Add tax returns, P&amp;L
+- Gift funds: Gift letter required
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AsyncToDocs</bpmn:incoming>
+      <bpmn:outgoing>Flow_DocsToAsyncEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_AssignLO" name="Assign Loan Officer">
+      <bpmn:documentation>
+TASK: Assign Loan Officer
+SERVICE: LoanOfficerAssignmentService.assignLO()
+
+PURPOSE: Assign LO to submitted application
+
+TIMING: Async (borrower doesn't wait)
+
+LOGIC:
+1. Check for pre-assigned LO (referral)
+2. If not, round-robin or rule-based assignment
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AsyncToLO</bpmn:incoming>
+      <bpmn:outgoing>Flow_LOToAsyncEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="Gateway_AsyncStart" name="Start Async Processing">
+      <bpmn:documentation>
+PARALLEL GATEWAY: Start Async Backend Processing
+
+IMPORTANT: This runs ASYNCHRONOUSLY.
+Borrower has already seen confirmation and can close browser.
+
+These services run in parallel:
+1. Pull Credit Report - CreditBureauService
+2. Validate Property - PropertyValidationService
+3. Assign Loan Officer - LoanOfficerAssignmentService
+4. Generate Document Checklist - DocumentChecklistService
+
+Can run at 2am if borrower submitted then.
+Borrower doesn't wait for these.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1b3c6r2</bpmn:incoming>
+      <bpmn:outgoing>Flow_AsyncToCredit</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AsyncToProperty</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AsyncToLO</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AsyncToDocs</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:parallelGateway id="Gateway_AsyncEnd" name="Async Processing Complete">
+      <bpmn:documentation>
+PARALLEL GATEWAY: Async Processing Complete
+
+All async tasks done:
+1. Credit pull complete
+2. Property validated
+3. LO assigned
+4. Document checklist generated
+
+Now send detailed confirmation email with LO contact.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_CreditToAsyncEnd</bpmn:incoming>
+      <bpmn:incoming>Flow_PropertyToAsyncEnd</bpmn:incoming>
+      <bpmn:incoming>Flow_LOToAsyncEnd</bpmn:incoming>
+      <bpmn:incoming>Flow_DocsToAsyncEnd</bpmn:incoming>
+      <bpmn:outgoing>Flow_AsyncEndToDetailedConfirm</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_SendDetailedConfirmation" name="Send Detailed Confirmation">
+      <bpmn:documentation>
+TASK: Send Detailed Confirmation Email
+SERVICE: NotificationService.sendDetailedConfirmation()
+
+PURPOSE:
+Send detailed email AFTER all async processing complete.
+Contains LO contact and document checklist.
+
+TIMING: Minutes to hours after submit (async)
+
+EMAIL CONTENT:
+- Subject: "Your MoXi Mortgage Application - Next Steps"
+- Application reference number
+- Assigned Loan Officer:
+  - Name, photo, phone, email, NMLS
+- Document upload link
+- Document checklist (personalized)
+- Next steps and timeline
+
+NOTE: This is different from immediate acknowledgment.
+- Acknowledgment: "We received it" (instant)
+- This: "Here's your LO and next steps" (after processing)
+
+DATABASE:
+- Update applications.status = 'in_review'
+- Update applications.confirmation_sent_at
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_AsyncEndToDetailedConfirm</bpmn:incoming>
+      <bpmn:outgoing>Flow_DetailedConfirmToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_ToProcessing" name="To Processing (L1-03)">
+      <bpmn:documentation>
+END: Application Phase Complete → Processing Phase
+
+Application has been:
+- Submitted by borrower
+- Processed by backend services
+- Detailed confirmation sent
+
+CURRENT STATUS:
+- applications.status = 'in_review'
+- Credit report retrieved
+- Property validated
+- Loan Officer assigned
+- Document checklist generated
+- Borrower notified (acknowledgment + detailed confirmation)
+
+NEXT PHASE: L1-03 Processing
+- LO reviews application and credit report
+- Documents collected and verified
+- Conditions identified
+
+IMPORTANT - TERMINOLOGY:
+Application submission ≠ Pre-Approval
+PRE-APPROVAL LETTER issued AFTER underwriting review.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DetailedConfirmToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ApplicationL1">
+    <bpmndi:BPMNPlane id="BPMNPlane_ApplicationL1" bpmnElement="Collaboration_Application">
+      <bpmndi:BPMNShape id="Participant_di" bpmnElement="Participant_Application" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="1900" height="950" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Services_di" bpmnElement="Lane_Services" isHorizontal="true">
+        <dc:Bounds x="190" y="460" width="1870" height="570" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Portal_di" bpmnElement="Lane_Portal" isHorizontal="true">
+        <dc:Bounds x="190" y="340" width="1870" height="120" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Borrower_di" bpmnElement="Lane_Borrower" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="1870" height="260" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_Application" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="242" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="221" y="225" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LoanProperty_di" bpmnElement="Task_LoanProperty" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="310" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BorrowerInfo_di" bpmnElement="Task_BorrowerInfo" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="440" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_AddCoBorrower_di" bpmnElement="Gateway_AddCoBorrower" isMarkerVisible="true">
+        <dc:Bounds x="565" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="547" y="145" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_CoBorrower_di" bpmnElement="CallActivity_CoBorrower" bioc:stroke="#fb8c00" bioc:fill="#ffe0b2" color:background-color="#ffe0b2" color:border-color="#fb8c00">
+        <dc:Bounds x="540" y="490" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResidenceHistory_di" bpmnElement="Task_ResidenceHistory" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="680" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EmploymentIncome_di" bpmnElement="Task_EmploymentIncome" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="810" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Assets_di" bpmnElement="Task_Assets" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="940" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Liabilities_di" bpmnElement="Task_Liabilities" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1070" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RealEstateOwned_di" bpmnElement="Task_RealEstateOwned" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1200" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Declarations_di" bpmnElement="Task_Declarations" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1330" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewAttest_di" bpmnElement="Task_ReviewAttest" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1460" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitApplication_di" bpmnElement="Task_SubmitApplication" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1590" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ImmediateParallel_di" bpmnElement="Gateway_ImmediateParallel">
+        <dc:Bounds x="1705" y="505" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1688" y="562" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DisplayConfirmation_di" bpmnElement="Task_DisplayConfirmation" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1780" y="360" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendAcknowledgment_di" bpmnElement="Task_SendAcknowledgment" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1780" y="490" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ImmediateJoin_di" bpmnElement="Gateway_ImmediateJoin">
+        <dc:Bounds x="1905" y="505" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1893" y="562" width="75" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Fork_di" bpmnElement="Gateway_Fork">
+        <dc:Bounds x="1965" y="375" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2020" y="393" width="75" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_BorrowerDone_di" bpmnElement="End_BorrowerDone" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1972" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1954" y="225" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PullCredit_di" bpmnElement="Task_PullCredit" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1390" y="560" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateProperty_di" bpmnElement="Task_ValidateProperty" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1240" y="890" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GenerateDocChecklist_di" bpmnElement="Task_GenerateDocChecklist" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1240" y="790" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AssignLO_di" bpmnElement="Task_AssignLO" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1240" y="690" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_AsyncStart_di" bpmnElement="Gateway_AsyncStart">
+        <dc:Bounds x="1185" y="575" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1182" y="537.5" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_AsyncEnd_di" bpmnElement="Gateway_AsyncEnd">
+        <dc:Bounds x="1415" y="805" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1396" y="864.5" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendDetailedConfirmation_di" bpmnElement="Task_SendDetailedConfirmation" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1520" y="790" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ToProcessing_di" bpmnElement="End_ToProcessing" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1692" y="812" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1676" y="855" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToLoanProperty_di" bpmnElement="Flow_StartToLoanProperty">
+        <di:waypoint x="278" y="200" />
+        <di:waypoint x="310" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LoanPropertyToBorrower_di" bpmnElement="Flow_LoanPropertyToBorrower">
+        <di:waypoint x="410" y="200" />
+        <di:waypoint x="440" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_BorrowerToGateway_di" bpmnElement="Flow_BorrowerToGateway">
+        <di:waypoint x="540" y="200" />
+        <di:waypoint x="565" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_YesCoBorrower_di" bpmnElement="Flow_YesCoBorrower" bioc:stroke="#fb8c00" color:border-color="#fb8c00">
+        <di:waypoint x="590" y="225" />
+        <di:waypoint x="590" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="596" y="263" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NoCoBorrower_di" bpmnElement="Flow_NoCoBorrower">
+        <di:waypoint x="615" y="200" />
+        <di:waypoint x="680" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="640" y="182" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CoBorrowerToResidence_di" bpmnElement="Flow_CoBorrowerToResidence">
+        <di:waypoint x="640" y="530" />
+        <di:waypoint x="660" y="530" />
+        <di:waypoint x="660" y="200" />
+        <di:waypoint x="680" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ResidenceToEmployment_di" bpmnElement="Flow_ResidenceToEmployment">
+        <di:waypoint x="780" y="200" />
+        <di:waypoint x="810" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EmploymentToAssets_di" bpmnElement="Flow_EmploymentToAssets">
+        <di:waypoint x="910" y="200" />
+        <di:waypoint x="940" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AssetsToLiabilities_di" bpmnElement="Flow_AssetsToLiabilities">
+        <di:waypoint x="1040" y="200" />
+        <di:waypoint x="1070" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LiabilitiesToREO_di" bpmnElement="Flow_LiabilitiesToREO">
+        <di:waypoint x="1170" y="200" />
+        <di:waypoint x="1200" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_REOToDeclarations_di" bpmnElement="Flow_REOToDeclarations">
+        <di:waypoint x="1300" y="200" />
+        <di:waypoint x="1330" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DeclarationsToReview_di" bpmnElement="Flow_DeclarationsToReview">
+        <di:waypoint x="1430" y="200" />
+        <di:waypoint x="1460" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToSubmit_di" bpmnElement="Flow_ReviewToSubmit">
+        <di:waypoint x="1560" y="200" />
+        <di:waypoint x="1590" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitToImmediateParallel_di" bpmnElement="Flow_SubmitToImmediateParallel">
+        <di:waypoint x="1690" y="200" />
+        <di:waypoint x="1730" y="200" />
+        <di:waypoint x="1730" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ImmediateToDisplay_di" bpmnElement="Flow_ImmediateToDisplay">
+        <di:waypoint x="1730" y="505" />
+        <di:waypoint x="1730" y="400" />
+        <di:waypoint x="1780" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ImmediateToEmail_di" bpmnElement="Flow_ImmediateToEmail">
+        <di:waypoint x="1755" y="530" />
+        <di:waypoint x="1780" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DisplayToJoin_di" bpmnElement="Flow_DisplayToJoin">
+        <di:waypoint x="1880" y="400" />
+        <di:waypoint x="1930" y="400" />
+        <di:waypoint x="1930" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EmailToJoin_di" bpmnElement="Flow_EmailToJoin">
+        <di:waypoint x="1880" y="530" />
+        <di:waypoint x="1905" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_JoinToFork_di" bpmnElement="Flow_JoinToFork">
+        <di:waypoint x="1930" y="505" />
+        <di:waypoint x="1930" y="400" />
+        <di:waypoint x="1965" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ForkToBorrowerEnd_di" bpmnElement="Flow_ForkToBorrowerEnd">
+        <di:waypoint x="1990" y="375" />
+        <di:waypoint x="1990" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ForkToAsyncStart_di" bpmnElement="Flow_ForkToAsyncStart">
+        <di:waypoint x="1990" y="425" />
+        <di:waypoint x="1990" y="600" />
+        <di:waypoint x="1490" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AsyncToCredit_di" bpmnElement="Flow_AsyncToCredit">
+        <di:waypoint x="1235" y="600" />
+        <di:waypoint x="1390" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AsyncToProperty_di" bpmnElement="Flow_AsyncToProperty">
+        <di:waypoint x="1210" y="625" />
+        <di:waypoint x="1210" y="930" />
+        <di:waypoint x="1240" y="930" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AsyncToLO_di" bpmnElement="Flow_AsyncToLO">
+        <di:waypoint x="1210" y="625" />
+        <di:waypoint x="1210" y="730" />
+        <di:waypoint x="1240" y="730" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AsyncToDocs_di" bpmnElement="Flow_AsyncToDocs">
+        <di:waypoint x="1210" y="625" />
+        <di:waypoint x="1210" y="830" />
+        <di:waypoint x="1240" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreditToAsyncEnd_di" bpmnElement="Flow_CreditToAsyncEnd">
+        <di:waypoint x="1440" y="640" />
+        <di:waypoint x="1440" y="805" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PropertyToAsyncEnd_di" bpmnElement="Flow_PropertyToAsyncEnd">
+        <di:waypoint x="1340" y="930" />
+        <di:waypoint x="1380" y="930" />
+        <di:waypoint x="1380" y="830" />
+        <di:waypoint x="1415" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LOToAsyncEnd_di" bpmnElement="Flow_LOToAsyncEnd">
+        <di:waypoint x="1340" y="730" />
+        <di:waypoint x="1380" y="730" />
+        <di:waypoint x="1380" y="830" />
+        <di:waypoint x="1415" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DocsToAsyncEnd_di" bpmnElement="Flow_DocsToAsyncEnd">
+        <di:waypoint x="1340" y="830" />
+        <di:waypoint x="1415" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AsyncEndToDetailedConfirm_di" bpmnElement="Flow_AsyncEndToDetailedConfirm">
+        <di:waypoint x="1465" y="830" />
+        <di:waypoint x="1520" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1b3c6r2_di" bpmnElement="Flow_1b3c6r2">
+        <di:waypoint x="1390" y="600" />
+        <di:waypoint x="1235" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DetailedConfirmToEnd_di" bpmnElement="Flow_DetailedConfirmToEnd">
+        <di:waypoint x="1620" y="830" />
+        <di:waypoint x="1692" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Note_Evidence_di" bpmnElement="Note_Evidence">
+        <dc:Bounds x="1280" y="1070" width="320" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_PostSubmit_di" bpmnElement="Note_PostSubmit">
+        <dc:Bounds x="910" y="1070" width="350" height="220" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_SmartValidation_di" bpmnElement="Note_SmartValidation">
+        <dc:Bounds x="570" y="1070" width="320" height="180" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_URLASections_di" bpmnElement="Note_URLASections">
+        <dc:Bounds x="210" y="1070" width="340" height="200" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

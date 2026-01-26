@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="Definitions_UWCond_Fixed" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0">
+  <bpmn:process id="Process_UWCond_Fixed" name="Conditions Clearing" isExecutable="true">
+    
+    <bpmn:startEvent id="Start_Docs" name="Docs Uploaded">
+      <bpmn:outgoing>Flow_Docs_View</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_Viewer" name="Review Conditions Viewer">
+      <bpmn:incoming>Flow_Docs_View</bpmn:incoming>
+      <bpmn:incoming>Flow_Loop</bpmn:incoming>
+      <bpmn:outgoing>Flow_View_Gate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gate_Accept" name="Accept?">
+      <bpmn:incoming>Flow_View_Gate</bpmn:incoming>
+      <bpmn:outgoing>Flow_Acc_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Acc_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_Clear" name="Mark Cleared">
+      <bpmn:incoming>Flow_Acc_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Clear_Check</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Reject" name="Reject &amp; Notify">
+      <bpmn:incoming>Flow_Acc_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Rej_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gate_Check" name="More Conditions?">
+      <bpmn:incoming>Flow_Clear_Check</bpmn:incoming>
+      <bpmn:outgoing>Flow_More_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_More_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_CTC" name="Issue Clear to Close">
+      <bpmn:incoming>Flow_More_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_CTC_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="End_Review" name="Review Done">
+      <bpmn:incoming>Flow_More_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_Rej_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_CTC" name="Ready for Closing">
+      <bpmn:incoming>Flow_CTC_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Docs_View" sourceRef="Start_Docs" targetRef="Task_Viewer" />
+    <bpmn:sequenceFlow id="Flow_View_Gate" sourceRef="Task_Viewer" targetRef="Gate_Accept" />
+    <bpmn:sequenceFlow id="Flow_Acc_Yes" sourceRef="Gate_Accept" targetRef="Task_Clear" />
+    <bpmn:sequenceFlow id="Flow_Acc_No" sourceRef="Gate_Accept" targetRef="Task_Reject" />
+    <bpmn:sequenceFlow id="Flow_Clear_Check" sourceRef="Task_Clear" targetRef="Gate_Check" />
+    <bpmn:sequenceFlow id="Flow_More_Yes" sourceRef="Gate_Check" targetRef="End_Review" />
+    <bpmn:sequenceFlow id="Flow_More_No" sourceRef="Gate_Check" targetRef="Task_CTC" />
+    <bpmn:sequenceFlow id="Flow_Rej_End" sourceRef="Task_Reject" targetRef="End_Review" />
+    <bpmn:sequenceFlow id="Flow_CTC_End" sourceRef="Task_CTC" targetRef="End_CTC" />
+    <bpmn:sequenceFlow id="Flow_Loop" sourceRef="End_Review" targetRef="Task_Viewer" /> 
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_UWCond_Fixed">
+    <bpmndi:BPMNPlane id="BPMNPlane_UWCond_Fixed" bpmnElement="Process_UWCond_Fixed">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start_Docs">
+        <dc:Bounds x="180" y="200" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_View_di" bpmnElement="Task_Viewer">
+        <dc:Bounds x="270" y="180" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_Acc_di" bpmnElement="Gate_Accept" isMarkerVisible="true">
+        <dc:Bounds x="420" y="195" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Clr_di" bpmnElement="Task_Clear">
+        <dc:Bounds x="520" y="120" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Rej_di" bpmnElement="Task_Reject">
+        <dc:Bounds x="520" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gate_Chk_di" bpmnElement="Gate_Check" isMarkerVisible="true">
+        <dc:Bounds x="670" y="135" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CTC_di" bpmnElement="Task_CTC">
+        <dc:Bounds x="800" y="120" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rev_di" bpmnElement="End_Review">
+        <dc:Bounds x="700" y="280" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_CTC_di" bpmnElement="End_CTC">
+        <dc:Bounds x="950" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_1" bpmnElement="Flow_Docs_View">
+        <di:waypoint x="216" y="218" />
+        <di:waypoint x="270" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_2" bpmnElement="Flow_View_Gate">
+        <di:waypoint x="370" y="220" />
+        <di:waypoint x="420" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_3" bpmnElement="Flow_Acc_Yes">
+        <di:waypoint x="445" y="195" />
+        <di:waypoint x="445" y="160" />
+        <di:waypoint x="520" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_4" bpmnElement="Flow_Acc_No">
+        <di:waypoint x="445" y="245" />
+        <di:waypoint x="445" y="300" />
+        <di:waypoint x="520" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_5" bpmnElement="Flow_Clear_Check">
+        <di:waypoint x="620" y="160" />
+        <di:waypoint x="670" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_6" bpmnElement="Flow_More_Yes">
+        <di:waypoint x="695" y="185" />
+        <di:waypoint x="695" y="280" />
+        <di:waypoint x="700" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_7" bpmnElement="Flow_More_No">
+        <di:waypoint x="720" y="160" />
+        <di:waypoint x="800" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_8" bpmnElement="Flow_Rej_End">
+        <di:waypoint x="620" y="300" />
+        <di:waypoint x="700" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_9" bpmnElement="Flow_CTC_End">
+        <di:waypoint x="900" y="160" />
+        <di:waypoint x="950" y="160" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
