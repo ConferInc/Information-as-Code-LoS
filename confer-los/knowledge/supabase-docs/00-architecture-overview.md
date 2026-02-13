@@ -2,7 +2,7 @@
 
 **Project**: Confer LOS (Loan Origination System)
 **Database**: PostgreSQL 15.8 (Supabase-managed)
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -173,22 +173,155 @@ sequenceDiagram
 
 ## Row-Level Security (RLS) Strategy
 
-All 27 public schema tables have **RLS enabled**. Key policies include:
+**23 tables** have **RLS enabled** (consents table not yet created). The system deployed 115 comprehensive policies across all tables.
 
-### Borrower Portal Policies
-- **Customers**: Borrowers can view/update their own customer record
-- **Applications**: Borrowers can view applications where they are the primary customer or linked via application_customers
-- **Documents**: Borrowers can view/upload documents for their applications only
-- **Storage**: Borrowers can only access files in folders matching their auth.uid()
+### RLS Helper Functions (5)
 
-### Internal User Policies
-- **Organization isolation**: Users can only access data within their organization
-- **Role-based access**: Future enhancement for role-based restrictions
-- **System admins**: Can access cross-organization data
+All functions are `SECURITY DEFINER` with `SET search_path = public` and `STABLE` volatility:
 
-**Security Functions**:
-- `auth.current_user_organization_id()`: Returns the current user's organization
-- `auth.get_user_role()`: Returns the current user's role
+1. **`get_auth_org_id()`** → uuid
+   - Returns staff user's organization_id from users table
+   - Returns NULL for borrowers or unauthenticated users
+
+2. **`get_auth_role()`** → text
+   - Returns staff user's role (admin, loan_officer, processor, underwriter)
+   - Returns NULL for borrowers or unauthenticated users
+
+3. **`auth.is_system_admin()`** → boolean
+   - Checks system_admin flag on users table
+   - COALESCE to false for safety
+
+4. **`get_auth_customer_ids()`** → SETOF uuid
+   - Returns customer IDs linked to auth.uid() via customers.auth_user_id
+   - Used for borrower access to customer-scoped data
+
+5. **`get_borrower_application_ids()`** → SETOF uuid
+   - Returns application IDs where user is:
+     - Primary customer (applications.primary_customer_id)
+     - Co-borrower (via application_customers)
+     - Anonymous draft creator (via key_information->>'_authUserId')
+
+### Standard Policy Pattern
+
+Each table follows this 5-policy pattern (with variations):
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+   - Bypasses all restrictions for Confer platform admins
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND role IN ('admin', 'loan_officer', 'processor', 'underwriter')
+   - Full CRUD for staff within their organization
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+   - Read-only for any staff role
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: Scoped to borrower's data (see patterns below)
+   - Read access to own data
+
+5. **`borrower_manage_own`** — FOR INSERT/UPDATE
+   - Check: Scoped to borrower's data + status restrictions
+   - Write access where appropriate (e.g., draft applications only)
+
+### Scoping Patterns by Table Type
+
+**Customer-scoped tables** (residences, employments, incomes, declarations, demographics, gift_funds, real_estate_owned):
+```sql
+customer_id IN (SELECT get_auth_customer_ids())
+```
+
+**Application-scoped tables** (assets, liabilities, documents, communications, application_events):
+```sql
+application_id IN (SELECT get_borrower_application_ids())
+```
+
+**Junction tables** (asset_ownership, liability_ownership):
+- Scoped via parent table's application_id
+
+**Staff-only tables** (tasks, notes):
+- No borrower policies (staff only)
+
+**Public read tables** (loan_products):
+- All authenticated users can SELECT (for rate shopping)
+
+### Special Application Policies
+
+The `applications` table has the most complex policies:
+
+1. **`borrower_view_own_apps`** — FOR SELECT
+   - Check: `id IN (SELECT get_borrower_application_ids())`
+
+2. **`borrower_update_own_draft`** — FOR UPDATE
+   - Check: `id IN (SELECT get_borrower_application_ids())` AND `status IN ('draft', 'in_progress')`
+   - Borrowers can only edit draft/in-progress applications
+
+3. **`anon_create_draft`** — FOR INSERT
+   - Anonymous users can create draft applications
+
+4. **`anon_update_own_draft`** — FOR UPDATE
+   - Check: `key_information->>'_authUserId' = auth.uid()::text` AND `status = 'draft'`
+   - Anonymous draft creators can update their drafts
+
+5. **`anon_view_own_draft`** — FOR SELECT
+   - Check: `key_information->>'_authUserId' = auth.uid()::text` AND `status = 'draft'`
+   - Anonymous draft creators can view their drafts
+
+### Compliance Rules
+
+**Documents**:
+- Borrowers can SELECT, INSERT, UPDATE but NOT DELETE
+- Only staff can delete documents (audit compliance)
+
+**Application Events**:
+- Borrowers have read-only access (audit trail integrity)
+- No UPDATE or DELETE policies for borrowers
+
+**Consents** (table not yet created):
+- INSERT + SELECT only (no UPDATE/DELETE)
+- Immutability for regulatory compliance
+
+### Performance Indexes
+
+RLS-optimized indexes added:
+- `idx_customers_auth_user_id` on customers(auth_user_id)
+- `idx_application_customers_customer_id` on application_customers(customer_id)
+- `idx_application_customers_application_id` on application_customers(application_id)
+- `idx_applications_primary_customer_id` on applications(primary_customer_id)
+- `idx_applications_key_info_auth_user` on applications using btree(key_information->>'_authUserId')
+
+---
+
+## Middleware Route Protection
+
+The Next.js middleware enforces route-level access control:
+
+### Staff Routes
+- **`/dashboard/*`** — Staff only (loan officers, processors, underwriters, admins)
+  - Requires: `public.users` record with valid organization_id
+  
+- **`/admin/*`** — Admin/System Admin only
+  - Requires: role = 'admin' OR system_admin = true
+
+### Borrower Routes
+- **`/borrower/*`** — Authenticated borrowers only (NEW)
+  - Requires: `public.customers` record with auth_user_id
+  
+- **`/co-borrower/*`** — Authenticated borrowers, with exceptions (NEW)
+  - Public access: `/co-borrower/welcome`, `/co-borrower/verify`
+  - Protected: All other co-borrower routes
+
+### Public/Anonymous Routes
+- **`/apply/*`** — Partial anonymous access
+  - Steps 1-9: Anonymous (draft creation)
+  - Step 10+: Authentication required
+  - Uses key_information->>'_authUserId' for anonymous tracking
+
+### Implementation Notes
+- Middleware runs before RLS policies (first line of defense)
+- RLS provides data-level security (second line of defense)
+- Defense-in-depth: both layers must authorize access
 
 ---
 
@@ -269,10 +402,12 @@ Every status change is logged in `application_events`:
 
 ## Schema Statistics
 
-- **Total Tables**: 27 (public schema)
-- **RLS Enabled**: All 27 tables
+- **Total Tables**: 27 defined (24 created, 3 pending: consents, loan_product_templates, residences_history)
+- **RLS Enabled**: 23 tables (consents not yet created)
+- **RLS Policies**: 115 policies deployed
+- **RLS Helper Functions**: 5 security functions
 - **Foreign Keys**: 50+ relationships
-- **Indexes**: 30+ performance indexes
+- **Indexes**: 35+ performance indexes (including 5 RLS-optimized)
 - **Storage Buckets**: 2 (documents, borrower-documents)
 
 ---

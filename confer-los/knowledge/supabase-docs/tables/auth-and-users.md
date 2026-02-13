@@ -3,6 +3,7 @@
 **Category**: Core System
 **Tables**: `organizations`, `users`
 **Dependencies**: Supabase `auth.users`
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -35,7 +36,19 @@
 
 ### RLS Policies
 
-**NONE** - Organizations are accessed via joins from user-scoped tables, not directly queried by end users.
+**3 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+   - Allows Confer platform admins full access across all organizations
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+   - Staff can manage their own organization
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `id = get_auth_org_id()`
+   - Any staff member can view their own organization
 
 ### Usage Patterns
 
@@ -105,17 +118,19 @@ WHERE slug = 'acme-lending';
 
 ### RLS Policies
 
-1. **"Users can view own profile"**
-   - Operation: `SELECT`
-   - Check: `id = auth.uid()`
+**3 policies enabled**:
 
-2. **"Users can update own profile"**
-   - Operation: `UPDATE`
-   - Check: `id = auth.uid()`
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+   - System admins can access all users across organizations
 
-3. **"Users can view organization members"** (planned)
-   - Operation: `SELECT`
-   - Check: `organization_id = auth.current_user_organization_id()`
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+   - Staff can view/update users within their organization (admins can modify)
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+   - Any staff member can view other users in their organization
 
 ### Triggers
 

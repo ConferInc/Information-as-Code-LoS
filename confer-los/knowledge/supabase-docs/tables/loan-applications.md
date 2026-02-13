@@ -2,6 +2,7 @@
 
 **Category**: Loan Application Core
 **Tables**: `loan_products`, `properties`, `applications`, `application_events`
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -33,6 +34,23 @@
 - Template structure is flexible (jsonb) to accommodate various product types
 - Product selection drives application requirements and workflow
 
+### RLS Policies
+
+**4 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`authenticated_view`** — FOR SELECT
+   - Check: `auth.uid() IS NOT NULL`
+   - All authenticated users (including borrowers) can view loan products for rate shopping
+
 ---
 
 ## Table: `properties`
@@ -62,6 +80,27 @@
 
 ### Property Types
 - Single Family, Condo, Townhouse, Multi-Family (2-4 units), Manufactured/Mobile Home
+
+### RLS Policies
+
+**5 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `id IN (SELECT property_id FROM applications WHERE id IN (SELECT get_borrower_application_ids()))`
+   - Borrowers can view properties associated with their applications
+
+5. **`borrower_update_own`** — FOR UPDATE
+   - Check: `id IN (SELECT property_id FROM applications WHERE id IN (SELECT get_borrower_application_ids()) AND status IN ('draft', 'in_progress'))`
+   - Borrowers can update property details for draft applications
 
 ---
 
@@ -116,9 +155,40 @@
 | `funded` | Loan closed and funded |
 
 ### RLS Policies
-- Borrowers can view applications where they are primary_customer or linked via application_customers
-- Borrowers can update draft applications only
-- Internal users can view/update applications in their organization
+
+**8 policies enabled** (most complex table):
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own_apps`** — FOR SELECT
+   - Check: `id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can view applications where they are primary customer, co-borrower, or draft creator
+
+5. **`borrower_update_own_draft`** — FOR UPDATE
+   - Check: `id IN (SELECT get_borrower_application_ids())` AND `status IN ('draft', 'in_progress')`
+   - Borrowers can only update draft/in-progress applications
+
+6. **`anon_create_draft`** — FOR INSERT
+   - Anonymous users can create draft applications (for /apply flow steps 1-9)
+
+7. **`anon_view_own_draft`** — FOR SELECT
+   - Check: `key_information->>'_authUserId' = auth.uid()::text` AND `status = 'draft'`
+   - Anonymous draft creators can view their own drafts
+
+8. **`anon_update_own_draft`** — FOR UPDATE
+   - Check: `key_information->>'_authUserId' = auth.uid()::text` AND `status = 'draft'`
+   - Anonymous draft creators can update their own drafts
+
+### Performance Indexes
+- `idx_applications_primary_customer_id` on `primary_customer_id`
+- `idx_applications_key_info_auth_user` on `(key_information->>'_authUserId')` (btree)
 
 ### Business Logic
 - **Application Number**: Auto-generated, format: `ORG-YYYYMMDD-NNNN`
@@ -152,6 +222,25 @@
 - `decision_made` - Underwriting decision
 - `condition_added` - Condition requested
 - `condition_cleared` - Condition satisfied
+
+### RLS Policies
+
+**4 policies enabled** (read-only for borrowers to maintain audit integrity):
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can view event history for their applications (read-only for audit trail)
+
+**Note**: No UPDATE or DELETE policies for borrowers to preserve audit trail integrity.
 
 ### Usage Pattern
 ```sql

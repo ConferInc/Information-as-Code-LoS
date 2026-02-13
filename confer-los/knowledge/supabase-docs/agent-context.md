@@ -14,13 +14,14 @@ Purpose: Multi-tenant root entity
 ### users
 PK: id (uuid, FK→auth.users)
 Cols: organization_id FK, role, first_name, last_name, email, phone, system_admin
-RLS: users.id = auth.uid()
+RLS: 3 policies — system_admin_all, staff_manage (org-scoped + role check), staff_view (org-scoped)
 Purpose: Internal staff (loan officers, processors, underwriters)
 
 ### customers
 PK: id (uuid)
 Cols: organization_id FK, auth_user_id FK→auth.users, customer_type, first_name, last_name, company_name, email, phone*, addresses (jsonb), ssn_encrypted, date_of_birth, citizenship_type, marital_status, dependent_count
-RLS: customers.auth_user_id = auth.uid()
+RLS: 5 policies — system_admin_all, staff_manage, staff_view, borrower_view_own (auth_user_id = auth.uid()), borrower_update_own
+Index: idx_customers_auth_user_id
 Purpose: Borrowers/applicants with optional portal access
 
 ### loan_products
@@ -37,13 +38,16 @@ Purpose: Subject properties
 PK: id (uuid)
 Cols: organization_id FK, property_id FK, loan_product_id FK, primary_customer_id FK, assigned_to FK→users, application_number UK, title, loan_amount, occupancy_type, status, stage, key_information (jsonb), decision_result (jsonb), submitted_at, funded_at
 Status: draft→submitted→in_review→in_underwriting→conditional_approval→clear_to_close→funded
-RLS: Borrowers see own apps, users see org apps
+RLS: 8 policies — system_admin_all, staff_manage, staff_view, borrower_view_own_apps (via get_borrower_application_ids()), borrower_update_own_draft (draft/in_progress only), anon_create_draft, anon_update_own_draft, anon_view_own_draft (via key_information->>'_authUserId')
+Indexes: idx_applications_primary_customer_id, idx_applications_key_info_auth_user
 Purpose: Loan application central entity
 
 ### application_customers
 PK: id (uuid)
 Cols: application_id FK, customer_id FK, organization_id FK, created_by FK→users, role, sequence, ownership_percentage, will_occupy_property, will_be_on_title, credit_type, invite_status, invited_at, accepted_at, econsent_given, econsent_given_at, econsent_ip_address
 Roles: primary_borrower, co_borrower, guarantor
+RLS: 5 policies — system_admin_all, staff_manage, staff_view, borrower_view_own (customer_id IN get_auth_customer_ids() OR application_id IN get_borrower_application_ids()), borrower_insert_own
+Indexes: idx_application_customers_application_id, idx_application_customers_customer_id
 Purpose: M:N junction linking customers to applications
 
 ### invitation_tokens
@@ -184,17 +188,43 @@ organizations
 
 ## RLS SUMMARY
 
-All 27 tables have RLS enabled.
+**23 tables enabled** (consents not yet created) | **115 policies deployed**
 
-**Key Policies**:
-- Borrower Portal: customers.auth_user_id = auth.uid()
-- Borrower Apps: application_customers.customer_id IN (SELECT id FROM customers WHERE auth_user_id = auth.uid())
-- Internal Users: organization_id = auth.current_user_organization_id()
-- Storage: borrower-documents bucket filtered by auth.uid()
+### Helper Functions (5)
+```sql
+get_auth_org_id() → uuid              -- Staff user's organization_id
+get_auth_role() → text                -- Staff user's role (NULL for borrowers)
+auth.is_system_admin() → boolean      -- System admin flag (COALESCE false)
+get_auth_customer_ids() → SETOF uuid  -- Customer IDs for auth.uid()
+get_borrower_application_ids() → SETOF uuid -- App IDs where user is borrower/co-borrower/draft creator
+```
 
-**Security Functions**:
-- auth.current_user_organization_id() → uuid
-- auth.get_user_role() → text
+All SECURITY DEFINER, STABLE, `SET search_path = public`
+
+### Standard Policy Pattern (per table)
+1. `system_admin_all` (FOR ALL) — bypass for system admins
+2. `staff_manage` (FOR ALL) — org-scoped + role check
+3. `staff_view` (FOR SELECT) — org-scoped, any staff
+4. `borrower_view_own` (FOR SELECT) — scoped to borrower data
+5. `borrower_manage_own` (INSERT/UPDATE) — borrower writes
+
+### Scoping by Table Type
+- **Customer-scoped**: `customer_id IN (SELECT get_auth_customer_ids())`
+  - Tables: residences, employments, incomes, declarations, demographics, gift_funds, real_estate_owned
+- **Application-scoped**: `application_id IN (SELECT get_borrower_application_ids())`
+  - Tables: assets, liabilities, documents, communications, application_events
+- **Junction tables**: Scoped via parent's application_id
+  - Tables: asset_ownership, liability_ownership
+- **Staff-only**: No borrower policies
+  - Tables: tasks, notes
+- **Public read**: All authenticated can SELECT
+  - Tables: loan_products
+
+### Special Rules
+- **Applications**: Anonymous can INSERT drafts; borrowers can UPDATE draft/in_progress only
+- **Documents**: Borrowers can SELECT/INSERT/UPDATE but NOT DELETE
+- **Application Events**: Borrowers read-only (audit trail)
+- **Consents** (pending): INSERT + SELECT only (immutability)
 
 ---
 

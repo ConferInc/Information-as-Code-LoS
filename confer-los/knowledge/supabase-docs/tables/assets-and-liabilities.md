@@ -2,6 +2,7 @@
 
 **Category**: Assets & Liabilities
 **Tables**: `assets`, `asset_ownership`, `gift_funds`, `liabilities`, `liability_ownership`
+**Last Updated**: 2026-02-12
 
 ---
 
