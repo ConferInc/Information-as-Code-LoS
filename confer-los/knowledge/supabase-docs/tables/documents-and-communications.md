@@ -2,6 +2,7 @@
 
 **Category**: Document Management & Communication
 **Tables**: `documents`, `communications`
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -52,6 +53,33 @@ Example: `documents/org-abc123/app-xyz789/doc-uuid/paystub.pdf`
 | `gift_letter` | Gift funds letter | N/A | Signed by donor, no repayment required |
 | `voe` | Verification of Employment | < 30 days old | Direct from employer |
 | `vod` | Verification of Deposit | < 30 days old | Direct from bank |
+
+### RLS Policies
+
+**6 policies enabled** (borrowers cannot DELETE documents for compliance):
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+   - Staff have full CRUD access
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+
+5. **`borrower_insert_own`** — FOR INSERT
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can upload documents for their applications
+
+6. **`borrower_update_own`** — FOR UPDATE
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can update document metadata (e.g., re-upload)
+
+**Important**: Borrowers do NOT have DELETE policy — only staff can delete documents for audit compliance.
 
 ### Document Review Logic
 ```sql
@@ -154,6 +182,27 @@ GROUP BY document_type;
   "delivered_at": "2026-02-10T09:05:23Z"
 }
 ```
+
+### RLS Policies
+
+**5 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can view communication history for their applications
+
+5. **`borrower_insert_own`** — FOR INSERT
+   - Check: `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can create communications (e.g., portal messages)
 
 ### Common Patterns
 

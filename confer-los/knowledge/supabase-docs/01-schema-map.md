@@ -1,7 +1,7 @@
 # Supabase Database Schema Map
 
 **Visual Entity Relationship Diagram**
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-13
 
 ---
 
@@ -83,6 +83,63 @@ erDiagram
     applications ||--o{ application_events : "has events"
     users ||--o{ application_events : "triggered by"
 
+    %% Sales & Lead Management (Phase 5B)
+    organizations ||--o{ leads : "has"
+    organizations ||--o{ pipeline_stages : "has"
+    organizations ||--o{ lead_sources : "has"
+    organizations ||--o{ communication_templates : "has"
+    users ||--o{ leads : "assigned to"
+    users ||--o{ notification_preferences : "has"
+    leads ||--o{ lead_activities : "has"
+    leads ||--o{ quick_quotes : "has"
+    leads ||--o| applications : "converts to"
+    leads ||--o| customers : "converts to"
+    applications ||--o{ quick_quotes : "has"
+    applications ||--o| pipeline_stages : "in stage"
+    communications ||--o| communication_templates : "uses"
+
+    %% Underwriter Portal (Phase 7B)
+    organizations ||--o{ uw_decisions : "has"
+    organizations ||--o{ risk_assessments : "has"
+    organizations ||--o{ exception_requests : "has"
+    organizations ||--o{ condition_templates : "has"
+    organizations ||--o{ ctc_clearances : "has"
+    applications ||--o{ uw_decisions : "has decisions"
+    applications ||--o{ risk_assessments : "has assessments"
+    applications ||--o{ exception_requests : "has exceptions"
+    applications ||--o| ctc_clearances : "has clearance"
+    users ||--o{ uw_decisions : "decided by"
+    users ||--o{ risk_assessments : "assessed by"
+    users ||--o{ exception_requests : "requested by"
+    users ||--o{ exception_requests : "reviewed by"
+    users ||--o{ condition_templates : "created by"
+    users ||--o{ ctc_clearances : "issued by"
+
+    %% Closer Portal (Phase 8B)
+    organizations ||--o{ closing_packages : "has"
+    organizations ||--o{ wire_requests : "has"
+    organizations ||--o{ cd_revisions : "has"
+    organizations ||--o{ closing_schedules : "has"
+    organizations ||--o{ disbursements : "has"
+    organizations ||--o{ post_closing_items : "has"
+    applications ||--o| closing_packages : "has package"
+    applications ||--o{ wire_requests : "has wires"
+    applications ||--o{ cd_revisions : "has CDs"
+    applications ||--o| closing_schedules : "has schedule"
+    applications ||--o{ disbursements : "has disbursements"
+    applications ||--o{ post_closing_items : "has trailing items"
+    users ||--o{ closing_packages : "delivered by"
+    users ||--o{ wire_requests : "requested by"
+    users ||--o{ wire_requests : "approved by"
+    users ||--o{ cd_revisions : "created by"
+    users ||--o{ closing_schedules : "created by"
+    users ||--o{ post_closing_items : "received by"
+    documents ||--o| closing_packages : "generated package"
+    documents ||--o| wire_requests : "wire instructions"
+    documents ||--o| wire_requests : "confirmation"
+    documents ||--o| cd_revisions : "CD document"
+    documents ||--o| post_closing_items : "supporting doc"
+
     %% Table Definitions
 
     organizations {
@@ -107,6 +164,11 @@ erDiagram
         text avatar_url
         jsonb metadata
         boolean system_admin
+        text nmls_number
+        text bio
+        boolean is_manager
+        jsonb working_hours
+        timestamp last_lead_assigned_at
         timestamp created_at
         timestamp updated_at
     }
@@ -186,6 +248,39 @@ erDiagram
         text stage
         jsonb key_information
         jsonb decision_result
+        uuid pipeline_stage_id FK
+        timestamp stage_entered_at
+        uuid lead_id FK
+        timestamp estimated_closing_date
+        uuid loan_officer_id FK
+        uuid processor_id FK
+        text source
+        text processing_status
+        timestamp processing_started_at
+        timestamp submitted_to_uw_at
+        uuid submitted_to_uw_by FK
+        integer credit_score_experian
+        integer credit_score_equifax
+        integer credit_score_transunion
+        integer representative_credit_score
+        timestamp credit_pulled_at
+        numeric appraisal_value
+        timestamp appraisal_date
+        text uw_decision
+        timestamp uw_decision_date
+        uuid uw_decision_by FK
+        text rate_lock_status
+        timestamp rate_lock_expiration
+        numeric rate_lock_rate
+        timestamp rate_lock_date
+        text aus_recommendation
+        jsonb aus_findings
+        text aus_type
+        timestamp aus_run_at
+        numeric ltv
+        numeric dti
+        timestamp target_closing_date
+        text submission_notes
         timestamp created_at
         timestamp updated_at
         timestamp submitted_at
@@ -481,6 +576,14 @@ erDiagram
         text content
         text external_id
         jsonb metadata
+        uuid lead_id FK
+        uuid template_id FK
+        timestamp read_at
+        uuid thread_id
+        text sender_role
+        text recipient_role
+        text visibility
+        text processing_comm_type
         timestamp created_at
     }
 
@@ -495,8 +598,16 @@ erDiagram
         text description
         text status
         text priority
-        date due_date
+        timestamp due_date
         timestamp completed_at
+        uuid lead_id FK
+        text task_type
+        boolean auto_generated
+        text task_category
+        text source_type
+        text related_entity_type
+        uuid related_entity_id
+        timestamp reminder_sent_at
         timestamp created_at
     }
 
@@ -523,6 +634,433 @@ erDiagram
         text source
         jsonb metadata
         timestamp created_at
+    }
+
+    leads {
+        uuid id PK
+        uuid organization_id FK
+        text first_name
+        text middle_name
+        text last_name
+        text email
+        text phone
+        text phone_secondary
+        text status
+        text source
+        text source_detail
+        uuid assigned_to FK
+        integer score
+        text loan_purpose
+        numeric estimated_loan_amount
+        numeric estimated_purchase_price
+        numeric estimated_down_payment
+        text property_type
+        text property_state
+        text property_city
+        text occupancy_type
+        text credit_score_range
+        numeric annual_income
+        boolean is_self_employed
+        boolean is_first_time_buyer
+        boolean is_veteran
+        boolean has_realtor
+        text realtor_name
+        text realtor_phone
+        text realtor_email
+        text preferred_contact_method
+        text preferred_contact_time
+        text disposition_reason
+        text disposition_notes
+        uuid converted_application_id FK
+        uuid converted_customer_id FK
+        timestamp last_contacted_at
+        timestamp next_follow_up_at
+        text notes
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+        uuid created_by FK
+    }
+
+    lead_activities {
+        uuid id PK
+        uuid organization_id FK
+        uuid lead_id FK
+        text activity_type
+        text description
+        text from_status
+        text to_status
+        jsonb metadata
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    pipeline_stages {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text slug UK
+        text description
+        integer sort_order
+        text color
+        integer sla_days
+        boolean is_terminal
+        boolean is_active
+        jsonb prerequisites
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    lead_sources {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text category
+        boolean is_active
+        numeric cost_per_lead
+        jsonb metadata
+        timestamp created_at
+    }
+
+    quick_quotes {
+        uuid id PK
+        uuid organization_id FK
+        uuid lead_id FK
+        uuid application_id FK
+        uuid created_by FK
+        text loan_purpose
+        numeric purchase_price
+        numeric loan_amount
+        numeric down_payment
+        numeric down_payment_pct
+        text property_type
+        text occupancy_type
+        text credit_score_range
+        text property_state
+        integer loan_term_months
+        numeric interest_rate
+        numeric monthly_pi
+        numeric monthly_taxes
+        numeric monthly_insurance
+        numeric monthly_mi
+        numeric monthly_hoa
+        numeric monthly_total
+        numeric ltv
+        numeric dti
+        numeric borrower_annual_income
+        numeric borrower_monthly_debts
+        text scenario_name
+        uuid loan_product_id FK
+        boolean prequal_letter_generated
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    notification_preferences {
+        uuid id PK
+        uuid user_id FK UK
+        jsonb preferences
+        timestamp updated_at
+    }
+
+    communication_templates {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text category
+        text subject
+        text body
+        jsonb merge_fields
+        boolean is_active
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    uw_decisions {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        text decision_type
+        timestamp decision_date
+        uuid decided_by FK
+        jsonb rationale_factors
+        text rationale_notes
+        text approval_conditions_summary
+        text suspension_reason
+        text suspension_notes
+        text denial_reason_primary
+        text denial_reason_detail
+        boolean denial_adverse_action_required
+        numeric counter_offer_loan_amount
+        text counter_offer_terms
+        text counter_offer_explanation
+        jsonb decision_result
+        text uw_signature
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    risk_assessments {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        uuid assessed_by FK
+        numeric gross_monthly_income
+        numeric proposed_total_piti
+        numeric recurring_debts_monthly
+        numeric front_end_dti
+        numeric back_end_dti
+        numeric dti_guideline
+        numeric dti_override
+        text dti_override_reason
+        numeric loan_amount
+        numeric purchase_price
+        numeric appraised_value
+        numeric value_used_for_ltv
+        numeric subordinate_financing
+        numeric ltv
+        numeric cltv
+        numeric down_payment_amount
+        numeric down_payment_percent
+        numeric ltv_guideline
+        numeric ltv_override
+        text ltv_override_reason
+        numeric total_verified_liquid_assets
+        numeric retirement_assets
+        numeric retirement_assets_discounted
+        numeric total_assets_for_reserves
+        numeric funds_to_close
+        numeric remaining_assets
+        numeric reserves_months
+        numeric reserves_guideline
+        numeric reserves_override
+        text reserves_override_reason
+        integer credit_score_used
+        integer credit_score_guideline
+        timestamp credit_pulled_at
+        timestamp credit_expires_at
+        integer credit_score_override
+        text credit_score_override_reason
+        numeric loan_to_income_ratio
+        boolean compensating_factor_reserves
+        boolean compensating_factor_housing_increase
+        boolean compensating_factor_down_payment
+        boolean compensating_factor_credit
+        boolean compensating_factor_employment
+        boolean compensating_factor_earnings_potential
+        boolean compensating_factor_tax_benefits
+        boolean compensating_factor_homeownership_education
+        text compensating_factor_notes
+        integer compensating_factor_count
+        integer total_tradelines
+        integer open_tradelines
+        integer total_inquiries_90d
+        integer unmatched_inquiries
+        integer total_derogatory_items
+        numeric payment_history_ontime_pct
+        integer late_30d_12mo
+        integer late_60d_24mo
+        integer late_90plus_24mo
+        integer collections_unpaid_count
+        numeric collections_unpaid_total
+        integer chargeoffs_count
+        integer public_records_count
+        jsonb assessment_data
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    exception_requests {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        text guideline_exceeded
+        numeric standard_limit
+        numeric actual_value
+        numeric variance_amount
+        numeric variance_percent
+        text justification
+        jsonb compensating_factors
+        uuid requested_by FK
+        timestamp requested_at
+        text status
+        uuid reviewed_by FK
+        timestamp reviewed_at
+        text approval_notes
+        text denial_reason
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    condition_templates {
+        uuid id PK
+        uuid organization_id FK
+        text title
+        text description
+        text condition_type
+        text category
+        text priority
+        integer default_due_date_days
+        boolean is_active
+        integer usage_count
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ctc_clearances {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK UK
+        boolean ptd_conditions_cleared
+        boolean ptf_conditions_cleared
+        boolean credit_current
+        boolean voe_final_completed
+        boolean appraisal_current
+        boolean title_received
+        boolean insurance_binder
+        boolean cd_prepared
+        boolean no_adverse_changes
+        boolean closing_scheduled
+        boolean funds_verified
+        boolean all_items_checked
+        timestamp ctc_issued_at
+        uuid ctc_issued_by FK
+        text ctc_final_notes
+        jsonb checklist_data
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    closing_packages {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK UK
+        text status
+        integer completeness_percentage
+        jsonb document_checklist
+        text closing_instructions
+        uuid generated_package_document_id FK
+        timestamp delivered_at
+        uuid delivered_by FK
+        text delivery_method
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    wire_requests {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        text status
+        text recipient_type
+        numeric amount
+        date funding_date
+        text bank_name
+        text routing_number
+        text account_number
+        text account_type
+        text beneficiary_name
+        text beneficiary_address
+        uuid wire_instructions_document_id FK
+        boolean phone_verification_completed
+        timestamp phone_verification_date
+        uuid phone_verification_by FK
+        text phone_verification_bank_rep
+        uuid requested_by FK
+        timestamp requested_at
+        uuid approved_by FK
+        timestamp approved_at
+        uuid second_approved_by FK
+        timestamp second_approved_at
+        text rejection_reason
+        timestamp sent_date
+        text wire_reference_number
+        timestamp confirmed_date
+        uuid confirmation_document_id FK
+        text notes
+        jsonb metadata
+        timestamp updated_at
+    }
+
+    cd_revisions {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        integer version_number
+        text status
+        timestamp issued_date
+        text delivery_method
+        timestamp three_day_wait_expires_at
+        timestamp viewed_date
+        timestamp signed_date
+        timestamp acknowledged_date
+        text revision_reason
+        text revision_notes
+        boolean resets_three_day_wait
+        text tolerance_status
+        uuid cd_document_id FK
+        jsonb changed_circumstances
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    closing_schedules {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK UK
+        date scheduled_date
+        time scheduled_time
+        integer duration_minutes
+        text location_type
+        text location_address
+        text closing_type
+        jsonb participants
+        text agenda_notes
+        timestamp rescheduled_from
+        text reschedule_reason
+        text reschedule_reason_notes
+        timestamp closing_completed_at
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    disbursements {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        text disbursement_type
+        text recipient_name
+        numeric amount
+        text status
+        timestamp scheduled_date
+        timestamp sent_date
+        timestamp confirmed_date
+        text notes
+        timestamp created_at
+    }
+
+    post_closing_items {
+        uuid id PK
+        uuid organization_id FK
+        uuid application_id FK
+        text item_type
+        text item_name
+        text description
+        boolean required
+        text status
+        date due_date
+        date received_date
+        uuid received_by FK
+        uuid document_id FK
+        text notes
+        timestamp created_at
+        timestamp updated_at
     }
 ```
 
@@ -583,6 +1121,30 @@ erDiagram
 - `tasks` - Task tracking
 - `notes` - Notes and comments
 
+### 🎯 Sales & Lead Management - Phase 5B (7 tables)
+- `leads` - Pre-application lead tracking
+- `lead_activities` - Lead interaction audit trail
+- `pipeline_stages` - Customizable workflow stages
+- `lead_sources` - Lead source tracking for ROI
+- `quick_quotes` - Scenario modeling and pre-quals
+- `notification_preferences` - User notification settings
+- `communication_templates` - Reusable templates
+
+### 🔍 Underwriter Portal - Phase 7B (5 tables)
+- `uw_decisions` - Underwriting decisions (approve/deny/suspend/counter-offer)
+- `risk_assessments` - DTI, LTV, reserves, credit analysis, compensating factors
+- `exception_requests` - Guideline exception requests with approval workflow
+- `condition_templates` - Reusable condition templates
+- `ctc_clearances` - Clear-to-close checklists
+
+### 🏁 Closer Portal - Phase 8B (6 tables)
+- `closing_packages` - Closing document package management
+- `wire_requests` - Wire transfer management with fraud prevention
+- `cd_revisions` - Closing Disclosure version history
+- `closing_schedules` - Closing appointment scheduling
+- `disbursements` - Fund disbursement tracking
+- `post_closing_items` - Post-closing trailing document checklist
+
 ---
 
 ## Common Query Patterns
@@ -641,4 +1203,4 @@ For detailed table specifications and business logic, see:
 
 ---
 
-*This diagram is auto-generated from the schema. Last updated: 2026-02-10*
+*This diagram is auto-generated from the schema. Last updated: 2026-02-13*

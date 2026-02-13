@@ -3,6 +3,7 @@
 **Category**: Customer Management
 **Tables**: `customers`, `application_customers`, `invitation_tokens`
 **Purpose**: Manage borrower profiles and link them to loan applications
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -56,23 +57,30 @@
 
 ### RLS Policies
 
-1. **"Borrowers can view own customer record"**
-   - Operation: `SELECT`
-   - Check: `auth_user_id = auth.uid()`
-   - Allows borrowers to view their own profile
+**5 policies enabled**:
 
-2. **"Borrowers can update own customer record"**
-   - Operation: `UPDATE`
-   - Check: `auth_user_id = auth.uid()`
-   - Allows borrowers to update their profile
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+   - System admins can access all customers
 
-3. **"Users can create own customer record"** (for portal registration)
-   - Operation: `INSERT`
-   - Check: `auth_user_id = auth.uid()`
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+   - Staff can manage customers in their organization
 
-4. **"Internal users can view organization customers"** (planned)
-   - Operation: `SELECT`
-   - Check: `organization_id = auth.current_user_organization_id()`
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+   - All staff can view customers in their organization
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `id IN (SELECT get_auth_customer_ids())`
+   - Borrowers can view their own customer record
+
+5. **`borrower_update_own`** — FOR UPDATE
+   - Check: `id IN (SELECT get_auth_customer_ids())`
+   - Borrowers can update their own profile
+
+### Performance Index
+- `idx_customers_auth_user_id` on `auth_user_id` (optimizes borrower lookups)
 
 ### JSONB Structures
 
@@ -201,6 +209,27 @@ WHERE auth_user_id = auth.uid();
 - `application_customers_application_id_idx` on `application_id`
 - `application_customers_customer_id_idx` on `customer_id`
 
+### RLS Policies
+
+**5 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `organization_id = get_auth_org_id()` AND `get_auth_role() IN ('admin', 'loan_officer', 'processor', 'underwriter')`
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `organization_id = get_auth_org_id()`
+
+4. **`borrower_view_own`** — FOR SELECT
+   - Check: `customer_id IN (SELECT get_auth_customer_ids())` OR `application_id IN (SELECT get_borrower_application_ids())`
+   - Borrowers can see links for their applications or their customer records
+
+5. **`borrower_insert_own`** — FOR INSERT
+   - Check: `customer_id IN (SELECT get_auth_customer_ids())`
+   - Borrowers can create links for their customer records (co-borrower invitation acceptance)
+
 ### Borrower Roles
 
 Common values for `role`:
@@ -298,6 +327,21 @@ WHERE id = 'app-cust-uuid';
 - `invitation_tokens_pkey` on `id`
 - `invitation_tokens_token_idx` on `token` (for fast lookup)
 - `invitation_tokens_app_cust_idx` on `application_customer_id`
+
+### RLS Policies
+
+**3 policies enabled**:
+
+1. **`system_admin_all`** — FOR ALL
+   - Check: `auth.is_system_admin()`
+
+2. **`staff_manage`** — FOR ALL
+   - Check: `application_customer_id IN (SELECT ac.id FROM application_customers ac WHERE ac.organization_id = get_auth_org_id())`
+   - Staff can manage invitation tokens for their organization's applications
+
+3. **`staff_view`** — FOR SELECT
+   - Check: `application_customer_id IN (SELECT ac.id FROM application_customers ac WHERE ac.organization_id = get_auth_org_id())`
+   - Staff can view invitation tokens for their organization
 
 ### Usage Patterns
 
