@@ -2,7 +2,7 @@
 
 **Project**: Confer LOS (Loan Origination System)
 **Database**: PostgreSQL 15.8 (Supabase-managed)
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-13
 
 ---
 
@@ -435,6 +435,107 @@ The **LO Portal** introduces a comprehensive lead management system with 7 new t
 
 **Note**: RLS policies for Phase 5B tables are **not yet configured**. Current access control is application-level only.
 
+### 7. Underwriter Portal (Phase 7B)
+The **Underwriter Portal** provides comprehensive risk analysis and decision-making capabilities with 5 new tables:
+
+#### `uw_decisions`
+- Records underwriting decisions for loan applications
+- Decision types: approve, approve_with_conditions, suspend, deny
+- Captures rationale factors and underwriter signature
+- Supports counter-offers with alternative loan terms
+- Denial-specific fields for adverse action compliance
+- Suspension workflow for document deficiencies or fraud concerns
+
+#### `risk_assessments`
+- Comprehensive risk analysis for each application
+- **DTI Metrics**: front-end/back-end ratios, guideline compliance, overrides
+- **LTV Metrics**: loan-to-value, CLTV, down payment calculations
+- **Reserves Metrics**: liquid assets, retirement assets (discounted), months of PITI
+- **Credit Metrics**: representative score, expiration tracking, credit history analysis
+- **Compensating Factors**: 8 boolean flags for manual underwriting criteria
+- **Credit Analysis**: tradelines, inquiries, derogatory items, payment history
+- Supports guideline overrides with required justification
+
+#### `exception_requests`
+- Tracks requests for exceptions to standard underwriting guidelines
+- Exception types: DTI, LTV, credit_score, reserves, employment_gap
+- Calculates variance amount and percentage from guideline
+- Approval workflow: pending → approved/denied
+- Requires detailed justification (min 100 characters)
+- Tracks compensating factors supporting exception
+
+#### `condition_templates`
+- Reusable templates for common underwriting conditions
+- Condition types: prior_to_approval, prior_to_docs, prior_to_funding, prior_to_purchase, informational
+- Categories: income, assets, employment, credit, property, title, insurance, legal, compliance
+- Priority levels: low, medium, high, critical
+- Usage tracking for template optimization
+- Default due date configuration
+
+#### `ctc_clearances`
+- Clear-to-Close checklist with boolean flags
+- 11 required items: conditions cleared, credit current, VOE final, appraisal, title, insurance, CD, no adverse changes, closing scheduled, funds verified
+- Auto-computed `all_items_checked` flag
+- CTC issuance tracking with timestamp and issuing underwriter
+- Prevents closing until all items verified
+
+**Note**: RLS policies for Phase 7B tables are **not yet configured**. Current access control is application-level only.
+
+### 8. Closer Portal (Phase 8B)
+The **Closer Portal** manages the final stages of loan closing and post-closing with 6 new tables:
+
+#### `closing_packages`
+- Manages assembly and delivery of closing document packages
+- Document checklist with status tracking (not_uploaded, uploaded, reviewed, approved)
+- Completeness percentage auto-calculated
+- Multiple delivery methods: email, portal_upload, sftp, physical_mail, courier
+- Generates final merged PDF package
+- Unique per application (one package per loan)
+
+#### `wire_requests`
+- Wire transfer management with fraud prevention measures
+- **Dual Approval Workflow**: first and second approver for large amounts
+- **Phone Verification Required**: must verbally confirm account with bank rep
+- Recipient types: title_escrow, borrower, seller, other
+- Wire status progression: draft → submitted → pending_verification → approved → sent → confirmed
+- Stores wire instructions document and confirmation document
+- Tracks wire reference number and confirmation date
+
+#### `cd_revisions`
+- Version history of Closing Disclosures (CDs)
+- **TRID Compliance**: 3-business-day waiting period tracking
+- Version numbering for each revision (1, 2, 3...)
+- Revision reasons: correction, changed_circumstance, borrower_request
+- **Tolerance Monitoring**: pass/fail/changed_circumstance status
+- Tracks changed circumstances with detailed documentation
+- Delivery method tracking: esign, email, hand_delivered, mail
+- Status progression: draft → ready_to_issue → issued → viewed → signed → acknowledged → superseded
+
+#### `closing_schedules`
+- Closing appointment scheduling and coordination
+- Supports in-person, RON (Remote Online Notarization), and mobile closings
+- Location types: title_office, lender_office, attorney_office, remote_ron, mobile_notary
+- Participant tracking with confirmation status
+- Rescheduling workflow with reason tracking
+- Unique per application (one schedule per loan)
+
+#### `disbursements`
+- Fund disbursement tracking from loan proceeds
+- Disbursement types: purchase_price, payoff_existing_loan, closing_costs, realtor_commission, cash_to_borrower
+- Status tracking: scheduled → sent → confirmed → failed
+- Links to wire_requests for wire transfers
+- Ensures total disbursements equal loan amount + borrower funds
+
+#### `post_closing_items`
+- Post-closing trailing documents and tasks checklist
+- Item types: recorded_deed, wet_ink_note, title_policy, trailing_condition, qc_review, servicing_boarding, investor_delivery
+- Status tracking: pending → received → complete
+- Due date tracking and document attachment
+- Required items must be complete before final loan delivery
+- Typical timeline: 0-90 days post-closing
+
+**Note**: RLS policies for Phase 8B tables are **not yet configured**. Current access control is application-level only.
+
 ---
 
 ## Key Workflows
@@ -473,12 +574,12 @@ The **LO Portal** introduces a comprehensive lead management system with 7 new t
 
 ## Schema Statistics
 
-- **Total Tables**: 31 (24 original + 7 Phase 5B LO Portal tables; consents exists in Drizzle but not yet migrated)
-- **RLS Enabled**: 23 tables (Phase 5B tables do not have RLS configured yet; consents not yet migrated)
+- **Total Tables**: 42 (24 original + 7 Phase 5B LO Portal + 5 Phase 7B Underwriter Portal + 6 Phase 8B Closer Portal; consents exists in Drizzle but not yet migrated)
+- **RLS Enabled**: 23 tables (Phase 5B, 7B, and 8B tables do not have RLS configured yet; consents not yet migrated)
 - **RLS Policies**: 115+ policies deployed across existing tables
 - **RLS Helper Functions**: 5 security functions
-- **Foreign Keys**: 60+ relationships
-- **Indexes**: 45+ performance indexes (including 5 RLS-optimized, plus new indexes on Phase 5B tables)
+- **Foreign Keys**: 75+ relationships
+- **Indexes**: 60+ performance indexes (including 5 RLS-optimized, plus new indexes on Phase 5B, 7B, 8B tables)
 - **Storage Buckets**: 2 (documents, borrower-documents)
 
 ---

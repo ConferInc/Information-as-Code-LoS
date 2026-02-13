@@ -4,7 +4,7 @@
 
 ---
 
-## CORE ENTITIES (31 Tables — 24 original + 7 Phase 5B LO Portal)
+## CORE ENTITIES (42 Tables — 24 original + 7 Phase 5B LO Portal + 5 Phase 7B UW Portal + 6 Phase 8B Closer Portal)
 
 ### organizations
 PK: id (uuid)
@@ -205,6 +205,90 @@ Purpose: Reusable email/SMS templates per organization; linked via communication
 
 ---
 
+## PHASE 7B: UNDERWRITER PORTAL (5 Tables)
+
+### uw_decisions
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, decision_type (approve|approve_with_conditions|suspend|deny), decision_date, decided_by FK→users, rationale_factors (jsonb array), rationale_notes, approval_conditions_summary, suspension_reason (document_deficiency|verification_issue|guideline_exception|fraud_concern|other), suspension_notes, denial_reason_primary (credit|capacity|collateral|character|compliance), denial_reason_detail, denial_adverse_action_required (default true), counter_offer_loan_amount, counter_offer_terms, counter_offer_explanation, decision_result (jsonb), uw_signature, created_at, updated_at
+Indexes: uw_decisions_app_idx, uw_decisions_org_date_idx (org, decision_date), uw_decisions_decided_by_idx (decided_by, decision_date)
+RLS: **Not configured yet**
+Purpose: Underwriting decisions with rationale tracking, counter-offers, adverse action flag
+
+### risk_assessments
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, assessed_by FK→users, gross_monthly_income, proposed_total_piti, recurring_debts_monthly, front_end_dti, back_end_dti, dti_guideline (default 50.00), dti_override, dti_override_reason, loan_amount, purchase_price, appraised_value, value_used_for_ltv, subordinate_financing, ltv, cltv, down_payment_amount, down_payment_percent, ltv_guideline, ltv_override, ltv_override_reason, total_verified_liquid_assets, retirement_assets, retirement_assets_discounted, total_assets_for_reserves, funds_to_close, remaining_assets, reserves_months, reserves_guideline, reserves_override, reserves_override_reason, credit_score_used, credit_score_guideline, credit_pulled_at, credit_expires_at (120 days), credit_score_override, credit_score_override_reason, loan_to_income_ratio, compensating_factor_reserves, compensating_factor_housing_increase, compensating_factor_down_payment, compensating_factor_credit, compensating_factor_employment, compensating_factor_earnings_potential, compensating_factor_tax_benefits, compensating_factor_homeownership_education, compensating_factor_notes, compensating_factor_count (default 0), total_tradelines, open_tradelines, total_inquiries_90d, unmatched_inquiries, total_derogatory_items, payment_history_ontime_pct, late_30d_12mo, late_60d_24mo, late_90plus_24mo, collections_unpaid_count, collections_unpaid_total, chargeoffs_count, public_records_count, assessment_data (jsonb), created_at, updated_at
+Indexes: risk_assessments_app_idx, risk_assessments_org_idx (org, created_at)
+RLS: **Not configured yet**
+Purpose: Comprehensive risk analysis — DTI, LTV, reserves, credit metrics, compensating factors, credit history
+
+### exception_requests
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, guideline_exceeded (dti|ltv|credit_score|reserves|employment_gap|other), standard_limit, actual_value, variance_amount, variance_percent, justification (min 100 chars), compensating_factors (jsonb array), requested_by FK→users, requested_at, status (pending|approved|denied, default pending), reviewed_by FK→users, reviewed_at, approval_notes, denial_reason, metadata (jsonb), created_at, updated_at
+Indexes: exception_requests_app_idx, exception_requests_status_idx (org, status), exception_requests_requested_by_idx (requested_by, requested_at)
+RLS: **Not configured yet**
+Purpose: Guideline exception requests with approval workflow, variance tracking, compensating factors
+
+### condition_templates
+PK: id (uuid)
+Cols: organization_id FK, title, description, condition_type (prior_to_approval|prior_to_docs|prior_to_funding|prior_to_purchase|informational), category (income|assets|employment|credit|property|title|insurance|legal|compliance|other), priority (low|medium|high|critical, default medium), default_due_date_days, is_active (default true), usage_count (default 0), created_by FK→users, created_at, updated_at
+RLS: **Not configured yet**
+Purpose: Reusable UW condition templates, usage tracking, auto-apply to conditions table
+
+### ctc_clearances
+PK: id (uuid)
+Cols: organization_id FK, application_id FK (UNIQUE — one per app), ptd_conditions_cleared (default false), ptf_conditions_cleared (default false), credit_current (default false), voe_final_completed (default false), appraisal_current (default false), title_received (default false), insurance_binder (default false), cd_prepared (default false), no_adverse_changes (default false), closing_scheduled (default false), funds_verified (default false), all_items_checked (default false — computed), ctc_issued_at, ctc_issued_by FK→users, ctc_final_notes, checklist_data (jsonb), created_at, updated_at
+Indexes: ctc_clearances_app_idx, ctc_clearances_org_idx (org, ctc_issued_at)
+RLS: **Not configured yet**
+Purpose: Clear-to-close checklist with 11 boolean flags, auto-computed all_items_checked, CTC issuance tracking
+
+---
+
+## PHASE 8B: CLOSER PORTAL (6 Tables)
+
+### closing_packages
+PK: id (uuid)
+Cols: organization_id FK, application_id FK (UNIQUE — one per app), status (not_started|in_progress|complete|delivered, default not_started), completeness_percentage (default 0 — auto-calculated), document_checklist (jsonb array of {documentType, documentName, required, status: not_uploaded|uploaded|reviewed|approved, documentId, uploadedAt, uploadedBy, notes}), closing_instructions, generated_package_document_id FK→documents (merged PDF), delivered_at, delivered_by FK→users, delivery_method (email|portal_upload|sftp|physical_mail|courier), created_at, updated_at
+Indexes: closing_packages_org_status_idx (org, status), closing_packages_app_idx
+RLS: **Not configured yet**
+Purpose: Closing document package assembly, checklist tracking, delivery to title/escrow
+
+### wire_requests
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, status (draft|submitted|pending_verification|approved|rejected|sent|confirmed|cancelled, default draft), recipient_type (title_escrow|borrower|seller|other), amount, funding_date (date), bank_name, routing_number, account_number, account_type (checking|savings|escrow), beneficiary_name, beneficiary_address, wire_instructions_document_id FK→documents (required), phone_verification_completed (default false — ANTI-FRAUD), phone_verification_date, phone_verification_by FK→users, phone_verification_bank_rep, requested_by FK→users, requested_at, approved_by FK→users, approved_at, second_approved_by FK→users (dual approval), second_approved_at, rejection_reason, sent_date, wire_reference_number, confirmed_date, confirmation_document_id FK→documents, notes, metadata (jsonb), updated_at
+Indexes: wire_requests_org_app_idx (org, app), wire_requests_status_funding_idx (status, funding_date)
+RLS: **Not configured yet**
+Purpose: Wire transfer management with dual approval, phone verification requirement (fraud prevention), confirmation tracking
+
+### cd_revisions
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, version_number (incremental 1,2,3...), status (draft|ready_to_issue|issued|viewed|signed|acknowledged|superseded, default draft), issued_date, delivery_method (esign|email|hand_delivered|mail), three_day_wait_expires_at (TRID compliance), viewed_date, signed_date, acknowledged_date, revision_reason (correction|changed_circumstance|borrower_request|other), revision_notes, resets_three_day_wait (default false — APR >0.125%, product change, etc.), tolerance_status (pass|fail|changed_circumstance), cd_document_id FK→documents (PDF), changed_circumstances (jsonb array of {circumstanceType, description, dateOccurred, documentedBy, documentedAt, affectedCosts[]}), created_by FK→users, created_at, updated_at
+Indexes: cd_revisions_app_version_idx (app, version), cd_revisions_app_status_idx (app, status)
+RLS: **Not configured yet**
+Purpose: Closing Disclosure version history, TRID 3-day wait tracking, tolerance monitoring, changed circumstances
+
+### closing_schedules
+PK: id (uuid)
+Cols: organization_id FK, application_id FK (UNIQUE — one per app), scheduled_date (date), scheduled_time (time), duration_minutes (default 60), location_type (title_office|lender_office|attorney_office|remote_ron|mobile_notary|other), location_address, closing_type (in_person|ron|mobile, default in_person), participants (jsonb array of {role, name, email, phone, willAttend, confirmed}), agenda_notes, rescheduled_from, reschedule_reason (borrower_request|document_delay|funding_delay|title_issue|condition_not_cleared|other), reschedule_reason_notes, closing_completed_at, created_by FK→users, created_at, updated_at
+Indexes: closing_schedules_org_date_idx (org, scheduled_date), closing_schedules_app_idx
+RLS: **Not configured yet**
+Purpose: Closing appointment scheduling, participant tracking, rescheduling workflow, RON/mobile support
+
+### disbursements
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, disbursement_type (purchase_price|payoff_existing_loan|closing_costs|realtor_commission|cash_to_borrower|other), recipient_name, amount, status (scheduled|sent|confirmed|failed, default scheduled), scheduled_date, sent_date, confirmed_date, notes, created_at
+Indexes: disbursements_app_type_idx (app, disbursement_type)
+RLS: **Not configured yet**
+Purpose: Fund disbursement tracking from loan proceeds (seller, payoffs, commissions, cash-out)
+
+### post_closing_items
+PK: id (uuid)
+Cols: organization_id FK, application_id FK, item_type (recorded_deed|wet_ink_note|title_policy|trailing_condition|qc_review|servicing_boarding|investor_delivery|other), item_name, description, required (default true), status (pending|received|complete, default pending), due_date (date), received_date (date), received_by FK→users, document_id FK→documents, notes, created_at, updated_at
+Indexes: post_closing_items_app_status_idx (app, status), post_closing_items_due_date_idx (due_date)
+RLS: **Not configured yet**
+Purpose: Post-closing trailing documents (recorded deed, wet ink note, title policy), QC review, investor delivery
+
+---
+
 ## KEY RELATIONSHIPS
 
 ```
@@ -223,6 +307,17 @@ organizations
   │   ├─► tasks (1:M)
   │   └─┬─► applications (converts to)
   │     └─► customers (converts to)
+  ├─► uw_decisions (1:M) — Phase 7B
+  ├─► risk_assessments (1:M) — Phase 7B
+  ├─► exception_requests (1:M) — Phase 7B
+  ├─► condition_templates (1:M) — Phase 7B
+  ├─► ctc_clearances (1:M) — Phase 7B
+  ├─► closing_packages (1:M) — Phase 8B
+  ├─► wire_requests (1:M) — Phase 8B
+  ├─► cd_revisions (1:M) — Phase 8B
+  ├─► closing_schedules (1:M) — Phase 8B
+  ├─► disbursements (1:M) — Phase 8B
+  ├─► post_closing_items (1:M) — Phase 8B
   └─► applications (1:M)
       ├─► application_customers (1:M) ─► customers
       ├─► employments (1:M) ─► customers
@@ -240,6 +335,16 @@ organizations
       ├─► notes (1:M)
       ├─► quick_quotes (1:M) — Phase 5B
       ├─► pipeline_stages (M:1) — Phase 5B
+      ├─► uw_decisions (1:M) — Phase 7B
+      ├─► risk_assessments (1:M) — Phase 7B
+      ├─► exception_requests (1:M) — Phase 7B
+      ├─► ctc_clearances (1:1) — Phase 7B
+      ├─► closing_packages (1:1) — Phase 8B
+      ├─► wire_requests (1:M) — Phase 8B
+      ├─► cd_revisions (1:M) — Phase 8B
+      ├─► closing_schedules (1:1) — Phase 8B
+      ├─► disbursements (1:M) — Phase 8B
+      ├─► post_closing_items (1:M) — Phase 8B
       └─► application_events (1:M)
 
 users ←1:1→ notification_preferences — Phase 5B
@@ -464,6 +569,107 @@ Located in `app/actions/org/`:
 - `applications.stage` (enum) vs `applications.pipeline_stage_id` (FK to custom stages)
 - `tasks.due_date` changed from `date` to `timestamp` (migration needed)
 - RLS policies NOT YET CONFIGURED for Phase 5B tables (application-level auth only)
+
+---
+
+## PHASE 7B: UNDERWRITER PORTAL WORKFLOW
+
+**Underwriting Decision Workflow**:
+1. Processor submits to UW → applications.processing_status = 'submitted_to_uw', submitted_to_uw_at set
+2. Underwriter performs risk assessment → risk_assessments created
+   - DTI calculated: front_end_dti = (PITI / gross_monthly_income), back_end_dti = ((PITI + debts) / gross_monthly_income)
+   - LTV calculated: ltv = (loan_amount / value_used_for_ltv), cltv includes subordinate financing
+   - Reserves calculated: reserves_months = (remaining_assets / proposed_total_piti)
+   - Credit analysis: tradelines, payment history, derogatory items, compensating factors
+3. Guideline violations identified → exception_requests created (status: pending)
+   - Variance amount/percent auto-calculated
+   - Requires justification (min 100 chars) + compensating factors
+4. Exception reviewed → exception_requests.status = 'approved'/'denied', reviewed_by set
+5. UW makes decision → uw_decisions created
+   - Decision types: approve, approve_with_conditions, suspend, deny
+   - Rationale factors (jsonb array) + signature required
+   - Denial triggers adverse action notice (denial_adverse_action_required)
+   - Counter-offer option with alternative loan terms
+6. Conditions attached → Use condition_templates to apply standard conditions
+7. CTC checklist initiated → ctc_clearances created (all boolean flags default false)
+8. All items checked → ctc_clearances.all_items_checked = true (computed)
+9. CTC issued → ctc_clearances.ctc_issued_at set, ctc_issued_by FK→users
+10. Status updated → applications.status = 'clear_to_close', application_events logged
+
+**Key Business Rules**:
+- Credit expires 120 days from pull date → risk_assessments.credit_expires_at
+- DTI guideline default 50%, can override with reason
+- LTV based on lesser of purchase price or appraised value
+- Compensating factors offset guideline violations (8 boolean flags + count)
+- CTC cannot be issued until all_items_checked = true
+
+---
+
+## PHASE 8B: CLOSER PORTAL WORKFLOW
+
+**Closing Package Assembly**:
+1. Application reaches CTC → closing_packages created (status: not_started)
+2. Closer builds checklist → document_checklist (jsonb array)
+   - Each item: {documentType, documentName, required, status, documentId, uploadedAt, uploadedBy, notes}
+   - Status: not_uploaded → uploaded → reviewed → approved
+3. Completeness tracked → completeness_percentage auto-calculated
+4. Package merged → generated_package_document_id FK→documents (final PDF)
+5. Package delivered → delivered_at, delivered_by, delivery_method (email|portal_upload|sftp|physical_mail|courier)
+6. Status updated → status = 'delivered'
+
+**Wire Request & Fraud Prevention**:
+1. Closer creates wire request → wire_requests (status: draft)
+2. Wire instructions uploaded → wire_instructions_document_id FK→documents (REQUIRED)
+3. Request submitted → status = 'submitted'
+4. **PHONE VERIFICATION** (ANTI-FRAUD) → status = 'pending_verification'
+   - Closer calls bank using independently verified phone number
+   - Bank rep confirms account details verbally
+   - phone_verification_bank_rep name documented
+   - phone_verification_completed = true, phone_verification_date set
+5. First approval → approved_by FK→users, approved_at set
+6. Second approval (large amounts) → second_approved_by FK→users, second_approved_at set
+7. Wire sent → status = 'sent', sent_date, wire_reference_number
+8. Receipt confirmed → status = 'confirmed', confirmed_date, confirmation_document_id FK→documents
+
+**Closing Disclosure (CD) Management**:
+1. Initial CD prepared → cd_revisions (version_number: 1, status: draft)
+2. CD issued → status = 'issued', issued_date, three_day_wait_expires_at (TRID compliance)
+3. Borrower views/signs → viewed_date, signed_date, acknowledged_date
+4. **CD Revision Triggers**:
+   - APR change > 0.125% → NEW CD, resets_three_day_wait = true
+   - Loan product change → NEW CD, resets_three_day_wait = true
+   - Small cost increases → NEW CD, resets_three_day_wait = false
+5. Changed circumstances documented → changed_circumstances (jsonb array)
+6. Tolerance monitoring → tolerance_status (pass|fail|changed_circumstance)
+7. New version issued → version_number incremented, old CD status = 'superseded'
+
+**Closing Scheduling**:
+1. CTC issued → closing_schedules created (unique per app)
+2. Schedule details → scheduled_date, scheduled_time, duration_minutes, location_type, closing_type (in_person|ron|mobile)
+3. Participants added → participants (jsonb array: {role, name, email, phone, willAttend, confirmed})
+4. Rescheduling → rescheduled_from (old timestamp), reschedule_reason, reschedule_reason_notes
+5. Closing completed → closing_completed_at
+
+**Fund Disbursements**:
+1. Closing scheduled → disbursements created for all payouts
+   - Types: purchase_price, payoff_existing_loan, closing_costs, realtor_commission, cash_to_borrower
+2. Disbursements sent → status = 'sent', sent_date
+3. Receipts confirmed → status = 'confirmed', confirmed_date
+4. Validation: total disbursements = loan amount + borrower funds to close
+
+**Post-Closing Trailing Items**:
+1. Closing completed → post_closing_items created (status: pending)
+   - Types: recorded_deed (30-60 days), wet_ink_note (1-3 days), title_policy (45-75 days), qc_review, servicing_boarding, investor_delivery
+2. Items received → status = 'received', received_date, received_by FK→users, document_id FK→documents
+3. Items complete → status = 'complete'
+4. All required items complete → final loan delivery to investor/servicing
+
+**Key Business Rules**:
+- Closing cannot be scheduled until CTC issued AND CD 3-day wait expired
+- Wire requests REQUIRE phone verification (fraud prevention)
+- CD revisions track tolerance status (zero tolerance, 10% tolerance, unlimited)
+- Post-closing items must all be complete before investor delivery
+- Dual approval required for large wire amounts
 
 ---
 
