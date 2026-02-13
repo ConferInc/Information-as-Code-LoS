@@ -4,7 +4,7 @@
 
 ---
 
-## CORE ENTITIES (27 Tables)
+## CORE ENTITIES (31 Tables — 24 original + 7 Phase 5B LO Portal)
 
 ### organizations
 PK: id (uuid)
@@ -13,9 +13,10 @@ Purpose: Multi-tenant root entity
 
 ### users
 PK: id (uuid, FK→auth.users)
-Cols: organization_id FK, role, first_name, last_name, email, phone, system_admin
+Cols: organization_id FK, role, first_name, last_name, email, phone, system_admin, nmls_number, bio, is_manager, working_hours (jsonb), last_lead_assigned_at
 RLS: 3 policies — system_admin_all, staff_manage (org-scoped + role check), staff_view (org-scoped)
 Purpose: Internal staff (loan officers, processors, underwriters)
+**Phase 5B**: Added nmls_number, bio, is_manager (for team management), working_hours (for scheduling), last_lead_assigned_at (for round-robin)
 
 ### customers
 PK: id (uuid)
@@ -37,9 +38,12 @@ Purpose: Subject properties
 ### applications
 PK: id (uuid)
 Cols: organization_id FK, property_id FK, loan_product_id FK, primary_customer_id FK, assigned_to FK→users, application_number UK, title, loan_amount, occupancy_type, status, stage, key_information (jsonb), decision_result (jsonb), submitted_at, funded_at
-Status: draft→submitted→in_review→in_underwriting→conditional_approval→clear_to_close→funded
+**Phase 5B New Cols**: pipeline_stage_id FK→pipeline_stages, stage_entered_at, lead_id FK→leads, estimated_closing_date, loan_officer_id FK→users, processor_id FK→users, source (lo_created|borrower_portal|lead_conversion|api), processing_status, processing_started_at, submitted_to_uw_at, submitted_to_uw_by FK, credit_score_*, credit_pulled_at, appraisal_value, appraisal_date, uw_decision, uw_decision_date, uw_decision_by FK, rate_lock_*, aus_*, ltv, dti, target_closing_date, submission_notes
+Status: draft→submitted→in_review→processing→underwriting→clear_to_close→closing_scheduled→funded
+Stage (legacy enum): prequal→application→submitted→processing→underwriting→conditional→clear_to_close→closing→funded
+**Note**: pipeline_stage_id (custom per org) vs stage (default enum) — apps can use either
 RLS: 8 policies — system_admin_all, staff_manage, staff_view, borrower_view_own_apps (via get_borrower_application_ids()), borrower_update_own_draft (draft/in_progress only), anon_create_draft, anon_update_own_draft, anon_view_own_draft (via key_information->>'_authUserId')
-Indexes: idx_applications_primary_customer_id, idx_applications_key_info_auth_user
+Indexes: idx_applications_primary_customer_id, idx_applications_key_info_auth_user, idx_applications_processor_idx, idx_applications_processing_status_idx
 Purpose: Loan application central entity
 
 ### application_customers
@@ -120,15 +124,17 @@ Purpose: Document management + review workflow
 ### communications
 PK: id (uuid)
 Cols: organization_id FK, application_id FK, customer_id FK, initiated_by FK→users, communication_type, direction, channel, subject, content, external_id, metadata (jsonb)
+**Phase 5B New Cols**: lead_id FK→leads, template_id FK→communication_templates, read_at, thread_id, sender_role, recipient_role, visibility (all|staff_only|processor_uw), processing_comm_type (message|document_request|status_update|condition_notice)
 Direction: inbound, outbound
 Channel: email, sms, call, portal
 Purpose: Communication log
 
 ### tasks
 PK: id (uuid)
-Cols: organization_id FK, application_id FK, customer_id FK, assignee_id FK→users, created_by FK→users, title, description, status, priority, due_date, completed_at
-Status: open, completed
-Priority: low, medium, high
+Cols: organization_id FK, application_id FK, customer_id FK, assignee_id FK→users, created_by FK→users, title, description, status, priority, due_date (timestamp, was date), completed_at
+**Phase 5B New Cols**: lead_id FK→leads, task_type (follow_up|document_request|review|closing_prep|general), auto_generated, task_category, source_type (manual|system|agent), related_entity_type (condition|service_order|document|verification), related_entity_id, reminder_sent_at
+Status: open, in_progress, completed, cancelled
+Priority: low, medium, high, urgent
 Purpose: Task management
 
 ### notes
@@ -144,6 +150,61 @@ Purpose: Audit trail
 
 ---
 
+## PHASE 5B: SALES & LEAD MANAGEMENT (7 Tables)
+
+### leads
+PK: id (uuid)
+Cols: organization_id FK, first_name, middle_name, last_name, email, phone, phone_secondary, status, source, source_detail, assigned_to FK→users, score (integer), loan_purpose, estimated_loan_amount, estimated_purchase_price, estimated_down_payment, property_type, property_state, property_city, occupancy_type, credit_score_range, annual_income, is_self_employed, is_first_time_buyer, is_veteran, has_realtor, realtor_*, preferred_contact_method, preferred_contact_time, disposition_reason, disposition_notes, converted_application_id FK, converted_customer_id FK, last_contacted_at, next_follow_up_at, notes, metadata (jsonb), created_at, updated_at, created_by FK
+Status: new, contacted, qualifying, qualified, quoted, application_started, nurturing, disqualified, lost, converted
+Source: web, phone, referral, walk_in, builder, realtor, marketing, purchase_list, social_media, other
+Indexes: leads_org_status_idx, leads_org_assigned_idx, leads_org_email_idx, leads_org_phone_idx, leads_org_score_idx, leads_org_created_idx
+RLS: **Not configured yet**
+Purpose: Pre-application contact management with lead scoring and conversion tracking
+
+### lead_activities
+PK: id (uuid)
+Cols: organization_id FK, lead_id FK (cascade delete), activity_type, description, from_status, to_status, metadata (jsonb), created_by FK→users, created_at
+Activity Types: created, status_changed, assigned, reassigned, note_added, call_logged, email_sent, email_received, sms_sent, quote_generated, prequal_letter_sent, converted_to_application, imported, score_updated, follow_up_scheduled
+Index: lead_activities_lead_time_idx (lead_id, created_at)
+RLS: **Not configured yet**
+Purpose: Complete audit trail of lead interactions
+
+### pipeline_stages
+PK: id (uuid)
+Cols: organization_id FK, name, slug UK (per org), description, sort_order (integer), color (default '#6B7280'), sla_days (integer), is_terminal (boolean, default false), is_active (boolean, default true), prerequisites (jsonb array), created_at, updated_at
+Indexes: pipeline_stages_org_order_idx (org, sort_order), pipeline_stages_org_slug_idx (org, slug) UNIQUE
+RLS: **Not configured yet**
+Purpose: Customizable workflow stages per organization; applications.pipeline_stage_id references this OR uses default applications.stage enum
+
+### lead_sources
+PK: id (uuid)
+Cols: organization_id FK, name, category, is_active (default true), cost_per_lead (numeric), metadata (jsonb), created_at
+Category: web, phone, referral, walk_in, builder, realtor, marketing, purchase_list, social_media, other
+RLS: **Not configured yet**
+Purpose: Lead source tracking for ROI analysis
+
+### quick_quotes
+PK: id (uuid)
+Cols: organization_id FK, lead_id FK→leads (nullable), application_id FK→applications (nullable), created_by FK→users, loan_purpose, purchase_price, loan_amount, down_payment, down_payment_pct, property_type, occupancy_type, credit_score_range, property_state, loan_term_months (default 360), interest_rate, monthly_pi, monthly_taxes, monthly_insurance, monthly_mi, monthly_hoa, monthly_total, ltv, dti, borrower_annual_income, borrower_monthly_debts, scenario_name, loan_product_id FK, prequal_letter_generated (default false), metadata (jsonb), created_at, updated_at
+Indexes: quick_quotes_lead_idx, quick_quotes_app_idx, quick_quotes_created_by_idx (created_by, created_at)
+RLS: **Not configured yet**
+Purpose: Scenario modeling for leads (pre-application) or applications (in-process); supports multiple quotes per lead/app
+
+### notification_preferences
+PK: id (uuid)
+Cols: user_id FK→users (UNIQUE), preferences (jsonb, default {}, shape: Record<string, {email: boolean, inApp: boolean}>), updated_at
+RLS: **Not configured yet**
+Purpose: Per-user notification settings for lead assignment, document requests, status updates, etc.
+
+### communication_templates
+PK: id (uuid)
+Cols: organization_id FK, name, category, subject, body, merge_fields (jsonb string array), is_active (default true), created_by FK→users, created_at, updated_at
+Category: welcome, document_request, status_update, follow_up, closing, general
+RLS: **Not configured yet**
+Purpose: Reusable email/SMS templates per organization; linked via communications.template_id
+
+---
+
 ## KEY RELATIONSHIPS
 
 ```
@@ -152,6 +213,16 @@ organizations
   ├─► customers (1:M)
   ├─► loan_products (1:M)
   ├─► properties (1:M)
+  ├─► pipeline_stages (1:M) — Phase 5B
+  ├─► lead_sources (1:M) — Phase 5B
+  ├─► communication_templates (1:M) — Phase 5B
+  ├─► leads (1:M) — Phase 5B
+  │   ├─► lead_activities (1:M)
+  │   ├─► quick_quotes (1:M)
+  │   ├─► communications (1:M)
+  │   ├─► tasks (1:M)
+  │   └─┬─► applications (converts to)
+  │     └─► customers (converts to)
   └─► applications (1:M)
       ├─► application_customers (1:M) ─► customers
       ├─► employments (1:M) ─► customers
@@ -164,10 +235,14 @@ organizations
       ├─► declarations (1:M) ─► customers
       ├─► demographics (1:M) ─► customers
       ├─► documents (1:M)
-      ├─► communications (1:M)
+      ├─► communications (1:M) ─► communication_templates
       ├─► tasks (1:M)
       ├─► notes (1:M)
+      ├─► quick_quotes (1:M) — Phase 5B
+      ├─► pipeline_stages (M:1) — Phase 5B
       └─► application_events (1:M)
+
+users ←1:1→ notification_preferences — Phase 5B
 ```
 
 ---
@@ -358,6 +433,37 @@ WHERE application_id = ? ORDER BY created_at DESC;
 9. Underwrite → applications.status = 'in_underwriting'
 10. Decision → applications.decision_result, application_events log
 11. Close → applications.status = 'funded', funded_at timestamp
+
+---
+
+## PHASE 5B: LO PORTAL WORKFLOW
+
+**Lead → Application Conversion**:
+1. Lead created → leads (status: new)
+2. Loan officer qualifies → lead_activities logged
+3. Generate quick quotes → quick_quotes (linked to lead)
+4. Convert to application → applications.lead_id set, lead.converted_application_id set, lead.status = 'converted'
+5. Customer record created → customers, lead.converted_customer_id set
+
+**Pipeline Stage Management**:
+- **Custom stages**: organizations can define custom pipeline_stages with sort_order, SLA, colors
+- **Default stage enum**: applications.stage (backward compatible)
+- **Dual approach**: applications.pipeline_stage_id (custom) OR applications.stage (default enum)
+- Server actions in `app/actions/org/` handle stage transitions
+
+**Server Actions** (Phase 5B):
+Located in `app/actions/org/`:
+- Lead CRUD and assignment
+- Lead activity logging
+- Quick quote generation
+- Pipeline stage management
+- Notification preference updates
+- Communication template management
+
+**Important Distinctions**:
+- `applications.stage` (enum) vs `applications.pipeline_stage_id` (FK to custom stages)
+- `tasks.due_date` changed from `date` to `timestamp` (migration needed)
+- RLS policies NOT YET CONFIGURED for Phase 5B tables (application-level auth only)
 
 ---
 

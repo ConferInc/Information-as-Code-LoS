@@ -55,6 +55,16 @@ graph TB
         EVENTS[Application Events]
     end
 
+    subgraph "Sales & Lead Management"
+        LEADS[Leads]
+        LEADACT[Lead Activities]
+        STAGES[Pipeline Stages]
+        SOURCES[Lead Sources]
+        QUOTES[Quick Quotes]
+        NOTIF[Notification Preferences]
+        TEMPLATES[Communication Templates]
+    end
+
     ORG --> USERS
     ORG --> CUST
     ORG --> PROD
@@ -82,6 +92,19 @@ graph TB
     APP --> TASKS
     APP --> NOTES
     APP --> EVENTS
+
+    ORG --> LEADS
+    ORG --> STAGES
+    ORG --> SOURCES
+    ORG --> TEMPLATES
+    USERS -->|assigned_to| LEADS
+    LEADS --> LEADACT
+    LEADS --> QUOTES
+    LEADS -->|converts to| APP
+    LEADS -->|converts to| CUST
+    APP --> QUOTES
+    USERS --> NOTIF
+    COMM --> TEMPLATES
 ```
 
 ---
@@ -173,7 +196,7 @@ sequenceDiagram
 
 ## Row-Level Security (RLS) Strategy
 
-**23 tables** have **RLS enabled** (consents table not yet created). The system deployed 115 comprehensive policies across all tables.
+**23 tables** have **RLS enabled** (consents table exists in Drizzle but not yet migrated; Phase 5B tables do not have RLS configured yet). The system deployed 115+ comprehensive policies across existing tables.
 
 ### RLS Helper Functions (5)
 
@@ -364,6 +387,54 @@ Every status change is logged in `application_events`:
 - User who made the change
 - Timestamp and source
 
+### 6. Sales & Lead Management (Phase 5B)
+The **LO Portal** introduces a comprehensive lead management system with 7 new tables:
+
+#### `leads`
+- Pre-application contact management
+- Lead scoring and qualification tracking
+- Source attribution and pipeline status
+- Conversion to customers and applications
+- Includes property intent, loan purpose, credit score range
+- Assigned to loan officers with follow-up scheduling
+
+#### `lead_activities`
+- Complete audit trail of lead interactions
+- Activity types: created, status_changed, assigned, note_added, call_logged, email_sent, quote_generated, converted_to_application
+- Metadata for context and analytics
+
+#### `pipeline_stages`
+- Customizable workflow stages per organization
+- Configurable sort order, colors, and SLA deadlines
+- Terminal stage tracking (won/lost/disqualified)
+- Prerequisites for stage progression
+- Applications can reference pipeline_stage_id (custom) or use default stage enum
+
+#### `lead_sources`
+- Source tracking for ROI analysis
+- Categories: web, phone, referral, realtor, marketing, social_media, etc.
+- Cost-per-lead tracking for marketing attribution
+
+#### `quick_quotes`
+- Fast scenario modeling for leads and applications
+- Linked to leads (pre-application) or applications (in-process)
+- Calculates monthly PI, DTI, LTV
+- Pre-qualification letter generation tracking
+- Multiple scenarios per lead/application
+
+#### `notification_preferences`
+- Per-user notification settings (email, in-app)
+- Granular control over notification types
+- Used for lead assignment, document requests, status updates
+
+#### `communication_templates`
+- Reusable email/SMS templates per organization
+- Categories: welcome, document_request, status_update, follow_up, closing
+- Merge field support for personalization
+- Templates linked to communications table
+
+**Note**: RLS policies for Phase 5B tables are **not yet configured**. Current access control is application-level only.
+
 ---
 
 ## Key Workflows
@@ -402,12 +473,12 @@ Every status change is logged in `application_events`:
 
 ## Schema Statistics
 
-- **Total Tables**: 27 defined (24 created, 3 pending: consents, loan_product_templates, residences_history)
-- **RLS Enabled**: 23 tables (consents not yet created)
-- **RLS Policies**: 115 policies deployed
+- **Total Tables**: 31 (24 original + 7 Phase 5B LO Portal tables; consents exists in Drizzle but not yet migrated)
+- **RLS Enabled**: 23 tables (Phase 5B tables do not have RLS configured yet; consents not yet migrated)
+- **RLS Policies**: 115+ policies deployed across existing tables
 - **RLS Helper Functions**: 5 security functions
-- **Foreign Keys**: 50+ relationships
-- **Indexes**: 35+ performance indexes (including 5 RLS-optimized)
+- **Foreign Keys**: 60+ relationships
+- **Indexes**: 45+ performance indexes (including 5 RLS-optimized, plus new indexes on Phase 5B tables)
 - **Storage Buckets**: 2 (documents, borrower-documents)
 
 ---

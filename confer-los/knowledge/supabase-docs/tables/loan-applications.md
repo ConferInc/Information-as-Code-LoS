@@ -117,15 +117,57 @@
 | `property_id` | uuid | FK to properties (subject property) |
 | `loan_product_id` | uuid | FK to loan_products |
 | `primary_customer_id` | uuid | FK to customers (primary borrower) |
-| `assigned_to` | uuid | FK to users (loan officer) |
+| `assigned_to` | uuid | FK to users (loan officer) — **deprecated, use loan_officer_id** |
 | `title` | text | Application title/name |
 | `application_number` | text | Unique identifier (UNIQUE) |
 | `loan_amount` | numeric | Requested loan amount |
 | `occupancy_type` | text | Primary Residence, Second Home, Investment |
 | `status` | text | Workflow status (see below) |
-| `stage` | text | Workflow stage (see below) |
+| `stage` | text | Workflow stage enum (see below) — **or use pipeline_stage_id** |
 | `key_information` | jsonb | Flexible application data |
 | `decision_result` | jsonb | Underwriting decision details |
+| **Phase 5B Columns** | | |
+| `pipeline_stage_id` | uuid | **Phase 5B** — FK to custom pipeline_stages (alternative to stage enum) |
+| `stage_entered_at` | timestamp | **Phase 5B** — When current stage was entered |
+| `lead_id` | uuid | **Phase 5B** — FK to leads (if converted from lead) |
+| `estimated_closing_date` | timestamp | **Phase 5B** — Target closing date |
+| `loan_officer_id` | uuid | **Phase 5B** — FK to users (primary loan officer) |
+| `processor_id` | uuid | **Phase 5B** — FK to users (assigned processor) |
+| `source` | text | **Phase 5B** — Application source (lo_created, borrower_portal, lead_conversion, api) |
+| **Processing Tracking** | | |
+| `processing_status` | text | **Phase 5B** — not_started, in_progress, file_complete, submitted_to_uw, suspended |
+| `processing_started_at` | timestamp | **Phase 5B** — When processing began |
+| `submitted_to_uw_at` | timestamp | **Phase 5B** — When submitted to underwriting |
+| `submitted_to_uw_by` | uuid | **Phase 5B** — FK to users who submitted to UW |
+| **Credit Scores** | | |
+| `credit_score_experian` | integer | **Phase 5B** — Experian credit score |
+| `credit_score_equifax` | integer | **Phase 5B** — Equifax credit score |
+| `credit_score_transunion` | integer | **Phase 5B** — TransUnion credit score |
+| `representative_credit_score` | integer | **Phase 5B** — Representative credit score (middle of 3) |
+| `credit_pulled_at` | timestamp | **Phase 5B** — When credit was pulled |
+| **Appraisal** | | |
+| `appraisal_value` | numeric | **Phase 5B** — Appraised property value |
+| `appraisal_date` | timestamp | **Phase 5B** — Appraisal completion date |
+| **Underwriting Decision** | | |
+| `uw_decision` | text | **Phase 5B** — approved, approved_with_conditions, suspended, denied |
+| `uw_decision_date` | timestamp | **Phase 5B** — Decision date |
+| `uw_decision_by` | uuid | **Phase 5B** — FK to users (underwriter) |
+| **Rate Lock** | | |
+| `rate_lock_status` | text | **Phase 5B** — locked, expired, extended, not_locked |
+| `rate_lock_expiration` | timestamp | **Phase 5B** — Rate lock expiration date |
+| `rate_lock_rate` | numeric | **Phase 5B** — Locked interest rate |
+| `rate_lock_date` | timestamp | **Phase 5B** — When rate was locked |
+| **AUS (Automated Underwriting)** | | |
+| `aus_recommendation` | text | **Phase 5B** — AUS recommendation |
+| `aus_findings` | jsonb | **Phase 5B** — AUS findings details |
+| `aus_type` | text | **Phase 5B** — du (Desktop Underwriter), lp (Loan Prospector), manual |
+| `aus_run_at` | timestamp | **Phase 5B** — When AUS was run |
+| **Calculated Ratios** | | |
+| `ltv` | numeric | **Phase 5B** — Loan-to-value ratio (%) |
+| `dti` | numeric | **Phase 5B** — Debt-to-income ratio (%) |
+| **Other** | | |
+| `target_closing_date` | timestamp | **Phase 5B** — Target closing date |
+| `submission_notes` | text | **Phase 5B** — Notes for submission to UW |
 | `created_at`, `updated_at` | timestamp | Timestamps |
 | `submitted_at`, `funded_at` | timestamp | Milestone timestamps |
 
@@ -153,6 +195,33 @@
 | `underwriting` | Credit review, risk assessment |
 | `closing` | Final approval, closing preparation |
 | `funded` | Loan closed and funded |
+
+**Phase 5B Update**: Applications can now use **custom stages** via `pipeline_stage_id` (FK to `pipeline_stages` table). This allows organizations to define their own workflow stages with custom names, colors, and SLA deadlines. The `stage` enum is still supported for backward compatibility.
+
+**Stage vs. Pipeline Stage**:
+- `stage` (enum) — Default workflow stages (backward compatible)
+- `pipeline_stage_id` (FK) — Custom stages per organization (new in Phase 5B)
+- Applications can use **either** approach, not both
+- `stage_entered_at` tracks when the current stage was entered (for SLA tracking)
+
+### Processing Status Values (Phase 5B)
+
+| Status | Description |
+|--------|-------------|
+| `not_started` | Processing has not begun |
+| `in_progress` | Actively processing (collecting docs, verifying) |
+| `file_complete` | All documents collected and verified |
+| `submitted_to_uw` | Submitted to underwriting |
+| `suspended` | Processing suspended/on hold |
+
+### Source Values (Phase 5B)
+
+| Source | Description |
+|--------|-------------|
+| `lo_created` | Created by loan officer in LO Portal |
+| `borrower_portal` | Created by borrower in borrower portal |
+| `lead_conversion` | Converted from a lead |
+| `api` | Created via API |
 
 ### RLS Policies
 

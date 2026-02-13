@@ -83,6 +83,21 @@ erDiagram
     applications ||--o{ application_events : "has events"
     users ||--o{ application_events : "triggered by"
 
+    %% Sales & Lead Management (Phase 5B)
+    organizations ||--o{ leads : "has"
+    organizations ||--o{ pipeline_stages : "has"
+    organizations ||--o{ lead_sources : "has"
+    organizations ||--o{ communication_templates : "has"
+    users ||--o{ leads : "assigned to"
+    users ||--o{ notification_preferences : "has"
+    leads ||--o{ lead_activities : "has"
+    leads ||--o{ quick_quotes : "has"
+    leads ||--o| applications : "converts to"
+    leads ||--o| customers : "converts to"
+    applications ||--o{ quick_quotes : "has"
+    applications ||--o| pipeline_stages : "in stage"
+    communications ||--o| communication_templates : "uses"
+
     %% Table Definitions
 
     organizations {
@@ -107,6 +122,11 @@ erDiagram
         text avatar_url
         jsonb metadata
         boolean system_admin
+        text nmls_number
+        text bio
+        boolean is_manager
+        jsonb working_hours
+        timestamp last_lead_assigned_at
         timestamp created_at
         timestamp updated_at
     }
@@ -186,6 +206,39 @@ erDiagram
         text stage
         jsonb key_information
         jsonb decision_result
+        uuid pipeline_stage_id FK
+        timestamp stage_entered_at
+        uuid lead_id FK
+        timestamp estimated_closing_date
+        uuid loan_officer_id FK
+        uuid processor_id FK
+        text source
+        text processing_status
+        timestamp processing_started_at
+        timestamp submitted_to_uw_at
+        uuid submitted_to_uw_by FK
+        integer credit_score_experian
+        integer credit_score_equifax
+        integer credit_score_transunion
+        integer representative_credit_score
+        timestamp credit_pulled_at
+        numeric appraisal_value
+        timestamp appraisal_date
+        text uw_decision
+        timestamp uw_decision_date
+        uuid uw_decision_by FK
+        text rate_lock_status
+        timestamp rate_lock_expiration
+        numeric rate_lock_rate
+        timestamp rate_lock_date
+        text aus_recommendation
+        jsonb aus_findings
+        text aus_type
+        timestamp aus_run_at
+        numeric ltv
+        numeric dti
+        timestamp target_closing_date
+        text submission_notes
         timestamp created_at
         timestamp updated_at
         timestamp submitted_at
@@ -481,6 +534,14 @@ erDiagram
         text content
         text external_id
         jsonb metadata
+        uuid lead_id FK
+        uuid template_id FK
+        timestamp read_at
+        uuid thread_id
+        text sender_role
+        text recipient_role
+        text visibility
+        text processing_comm_type
         timestamp created_at
     }
 
@@ -495,8 +556,16 @@ erDiagram
         text description
         text status
         text priority
-        date due_date
+        timestamp due_date
         timestamp completed_at
+        uuid lead_id FK
+        text task_type
+        boolean auto_generated
+        text task_category
+        text source_type
+        text related_entity_type
+        uuid related_entity_id
+        timestamp reminder_sent_at
         timestamp created_at
     }
 
@@ -523,6 +592,148 @@ erDiagram
         text source
         jsonb metadata
         timestamp created_at
+    }
+
+    leads {
+        uuid id PK
+        uuid organization_id FK
+        text first_name
+        text middle_name
+        text last_name
+        text email
+        text phone
+        text phone_secondary
+        text status
+        text source
+        text source_detail
+        uuid assigned_to FK
+        integer score
+        text loan_purpose
+        numeric estimated_loan_amount
+        numeric estimated_purchase_price
+        numeric estimated_down_payment
+        text property_type
+        text property_state
+        text property_city
+        text occupancy_type
+        text credit_score_range
+        numeric annual_income
+        boolean is_self_employed
+        boolean is_first_time_buyer
+        boolean is_veteran
+        boolean has_realtor
+        text realtor_name
+        text realtor_phone
+        text realtor_email
+        text preferred_contact_method
+        text preferred_contact_time
+        text disposition_reason
+        text disposition_notes
+        uuid converted_application_id FK
+        uuid converted_customer_id FK
+        timestamp last_contacted_at
+        timestamp next_follow_up_at
+        text notes
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+        uuid created_by FK
+    }
+
+    lead_activities {
+        uuid id PK
+        uuid organization_id FK
+        uuid lead_id FK
+        text activity_type
+        text description
+        text from_status
+        text to_status
+        jsonb metadata
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    pipeline_stages {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text slug UK
+        text description
+        integer sort_order
+        text color
+        integer sla_days
+        boolean is_terminal
+        boolean is_active
+        jsonb prerequisites
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    lead_sources {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text category
+        boolean is_active
+        numeric cost_per_lead
+        jsonb metadata
+        timestamp created_at
+    }
+
+    quick_quotes {
+        uuid id PK
+        uuid organization_id FK
+        uuid lead_id FK
+        uuid application_id FK
+        uuid created_by FK
+        text loan_purpose
+        numeric purchase_price
+        numeric loan_amount
+        numeric down_payment
+        numeric down_payment_pct
+        text property_type
+        text occupancy_type
+        text credit_score_range
+        text property_state
+        integer loan_term_months
+        numeric interest_rate
+        numeric monthly_pi
+        numeric monthly_taxes
+        numeric monthly_insurance
+        numeric monthly_mi
+        numeric monthly_hoa
+        numeric monthly_total
+        numeric ltv
+        numeric dti
+        numeric borrower_annual_income
+        numeric borrower_monthly_debts
+        text scenario_name
+        uuid loan_product_id FK
+        boolean prequal_letter_generated
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    notification_preferences {
+        uuid id PK
+        uuid user_id FK UK
+        jsonb preferences
+        timestamp updated_at
+    }
+
+    communication_templates {
+        uuid id PK
+        uuid organization_id FK
+        text name
+        text category
+        text subject
+        text body
+        jsonb merge_fields
+        boolean is_active
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
     }
 ```
 
@@ -582,6 +793,15 @@ erDiagram
 ### ✅ Workflow Management (2 tables)
 - `tasks` - Task tracking
 - `notes` - Notes and comments
+
+### 🎯 Sales & Lead Management - Phase 5B (7 tables)
+- `leads` - Pre-application lead tracking
+- `lead_activities` - Lead interaction audit trail
+- `pipeline_stages` - Customizable workflow stages
+- `lead_sources` - Lead source tracking for ROI
+- `quick_quotes` - Scenario modeling and pre-quals
+- `notification_preferences` - User notification settings
+- `communication_templates` - Reusable templates
 
 ---
 
